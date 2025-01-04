@@ -1,0 +1,9 @@
+[package]
+name = "bk"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+serde = { version = "1.0.217", features = ["derive"] }
+toml = "0.8.19"
+yansi = "1.0.1"
