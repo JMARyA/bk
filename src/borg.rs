@@ -16,7 +16,11 @@ pub fn create_archive(conf: &BorgConfig) {
         std::fs::read_to_string("/etc/hostname")
             .map(|x| x.trim().to_string())
             .unwrap_or(String::from("UNKNOWN")),
-        conf.src.join("+++"),
+        conf.src
+            .iter()
+            .map(|x| x.trim_start_matches("/").replace("/", "-"))
+            .collect::<Vec<_>>()
+            .join("+++"),
         nowtime()
     );
 
