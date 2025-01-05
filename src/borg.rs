@@ -33,7 +33,7 @@ pub fn create_archive(conf: &BorgConfig) {
         format!("{}::{archive_name}", conf.repo).paint(Color::Yellow),
     );
 
-    let mut cmd = vec!["borg", "create", "--stats", "--list"];
+    let mut cmd = vec!["borg", "create", "--stats", "--list", "--progress"];
 
     let empty = Vec::new();
     for ex in conf.exclude.as_ref().unwrap_or(&empty) {
