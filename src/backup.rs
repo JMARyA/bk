@@ -23,7 +23,11 @@ pub fn ensure_exists(dir: &str) {
 }
 
 pub fn run_backup_rsync(conf: &RsyncConfig) {
-    println!("Running backup for {} -> {}", conf.src, conf.dest);
+    println!(
+        "Running backup for {} -> {}",
+        conf.src.paint(Color::Blue),
+        conf.dest.paint(Color::Yellow)
+    );
 
     if let Some(dir) = &conf.ensure_exists {
         ensure_exists(&dir);
