@@ -13,7 +13,9 @@ pub fn init_repo(path: &str) {
 pub fn create_archive(conf: &BorgConfig) {
     let archive_name = format!(
         "BK_{}_{}_{}",
-        std::fs::read_to_string("/etc/hostname").unwrap_or(String::from("UNKNOWN")),
+        std::fs::read_to_string("/etc/hostname")
+            .map(|x| x.trim().to_string())
+            .unwrap_or(String::from("UNKNOWN")),
         conf.src.join("+++"),
         nowtime()
     );
@@ -42,12 +44,6 @@ pub fn create_archive(conf: &BorgConfig) {
 
     if conf.one_file_system.unwrap_or_default() {
         cmd.push("--one-file-system");
-    }
-
-    if conf.atime.unwrap_or_default() {
-        cmd.push("--atime");
-    } else {
-        cmd.push("--noatime");
     }
 
     if !conf.ctime.unwrap_or(true) {

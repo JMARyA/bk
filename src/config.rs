@@ -32,7 +32,6 @@ pub struct BorgConfig {
     pub exclude: Option<Vec<String>>,
     pub exclude_if_present: Option<Vec<String>>,
     pub one_file_system: Option<bool>,
-    pub atime: Option<bool>,
     pub ctime: Option<bool>,
     pub no_acls: Option<bool>,
     pub no_xattrs: Option<bool>,

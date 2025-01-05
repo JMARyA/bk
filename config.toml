@@ -44,9 +44,6 @@ exclude_if_present = [".nobackup"]
 # Stay in one filesystem
 one_file_system = true
 
-# Backup access time
-atime = false
-
 # Backup change time
 ctime = false
 
