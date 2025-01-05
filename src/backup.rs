@@ -90,7 +90,10 @@ pub fn cephfs_snap_create(dir: &str) -> (String, String) {
         }
     }
 
-    (snap_dir.to_str().unwrap().to_string(), snap_name)
+    (
+        format!("{}/", snap_dir.to_str().unwrap().to_string()),
+        snap_name,
+    )
 }
 
 pub fn cephfs_snap_remove(dir: &str, snap: &str) {
