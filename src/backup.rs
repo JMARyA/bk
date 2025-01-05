@@ -24,8 +24,8 @@ pub fn ensure_exists(dir: &str) {
 
 pub fn run_backup_rsync(conf: &RsyncConfig) {
     println!(
-        "Running backup for {} -> {}",
-        conf.src.paint(Color::Blue),
+        "--> Running backup for {} -> {}",
+        conf.src.paint(Color::Yellow),
         conf.dest.paint(Color::Yellow)
     );
 
