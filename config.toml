@@ -19,6 +19,9 @@ delete = true
 # Ensure this directory exists and it not empty before running rsync
 ensure_exists = "/home"
 
+# Make a CephFS snapshot before rsync
+cephfs_snap = true
+
 # Borg Operation
 [[borg]]
 repo = "/backup/repo.borg"

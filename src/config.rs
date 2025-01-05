@@ -19,6 +19,7 @@ pub struct RsyncConfig {
     pub exclude: Option<Vec<String>>,
     pub delete: Option<bool>,
     pub ensure_exists: Option<String>,
+    pub cephfs_snap: Option<bool>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
