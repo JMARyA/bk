@@ -1,7 +1,7 @@
 use yansi::{Color, Paint};
 
 use crate::{
-    backup::nowtime,
+    backup::{cephfs_snap_create, cephfs_snap_remove_dir, ensure_exists, nowtime},
     config::{BorgCheckConfig, BorgConfig, BorgPruneConfig},
     run_command,
 };
@@ -23,6 +23,10 @@ pub fn create_archive(conf: &BorgConfig) {
             .join("+++"),
         nowtime()
     );
+
+    if let Some(dir) = &conf.ensure_exists {
+        ensure_exists(dir);
+    }
 
     println!(
         "--> Running backup for {}",
@@ -76,11 +80,28 @@ pub fn create_archive(conf: &BorgConfig) {
 
     cmd.push(&repo);
 
-    for path in &conf.src {
-        cmd.push(path);
+    let mut snaps = Vec::new();
+
+    if conf.cephfs_snap.unwrap_or_default() {
+        for path in &conf.src {
+            let snap = cephfs_snap_create(&path);
+            snaps.push(snap);
+        }
+    } else {
+        for path in &conf.src {
+            cmd.push(path);
+        }
     }
 
+    let snap_dirs = snaps.iter().map(|x| x.0.as_str()).collect::<Vec<_>>();
+    cmd.extend(snap_dirs);
+
     run_command(&cmd, conf.passphrase.clone());
+
+    for cleanup in &snaps {
+        cephfs_snap_remove_dir(&cleanup.0);
+        println!("--> Cleaning up snap {}", cleanup.0);
+    }
 }
 
 pub fn prune_archive(conf: &BorgPruneConfig) {

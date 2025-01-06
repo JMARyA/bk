@@ -37,6 +37,8 @@ pub struct BorgConfig {
     pub no_xattrs: Option<bool>,
     pub comment: Option<String>,
     pub compression: Option<String>,
+    pub ensure_exists: Option<String>,
+    pub cephfs_snap: Option<bool>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

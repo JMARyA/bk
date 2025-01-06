@@ -116,3 +116,10 @@ pub fn cephfs_snap_remove(dir: &str, snap: &str) {
     println!("--> Removing snapshot {} on {}", snap, dir);
     std::fs::remove_dir(snap_dir).unwrap()
 }
+
+pub fn cephfs_snap_remove_dir(dir: &str) {
+    let path = std::path::Path::new(dir);
+
+    println!("--> Removing snapshot {}", path.to_str().unwrap());
+    std::fs::remove_dir(path).unwrap()
+}

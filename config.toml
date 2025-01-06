@@ -59,6 +59,12 @@ comment = "Backup of /home/me/"
 # Compression
 compression = "zstd,10"
 
+# Ensure directory exists before backup
+ensure_exists = "/home/me"
+
+# Make a CephFS snapshot before backup
+cephfs_snap = true
+
 # Borg Check Operation
 [[borg_check]]
 # Repository to check
