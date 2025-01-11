@@ -1,0 +1,15 @@
+when:
+  - event: push
+    branch: main
+
+steps:
+  - name: "PKGBUILD"
+    image: git.hydrar.de/jmarya/pacco-build:latest
+    commands:
+      - pacman -Syu --noconfirm
+      - buildpkg navos x86_64 pac.hydrar.de "$TOKEN" "$KEY"
+    environment:
+      TOKEN:
+        from_secret: pacco_token
+      KEY:
+        from_secret: sign_key

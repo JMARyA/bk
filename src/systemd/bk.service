@@ -1,0 +1,9 @@
+[Unit]
+Description=Backup
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/bk /etc/bk.toml
+User=root
+StandardOutput=journal
+StandardError=journal
