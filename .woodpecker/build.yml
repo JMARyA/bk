@@ -13,3 +13,4 @@ steps:
         from_secret: pacco_token
       KEY:
         from_secret: sign_key
+
