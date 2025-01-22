@@ -93,30 +93,37 @@ pub fn create_archive(conf: &BorgConfig) {
     if conf.cephfs_snap.unwrap_or_default() {
         for path in &conf.src {
             let snap = cephfs_snap_create(&path);
-            snaps.push(snap);
+            snaps.push((snap.0, snap.1, path));
         }
     }
 
     let mut dirs = if snaps.is_empty() {
-        conf.src.clone()
+        conf.src
+            .clone()
+            .into_iter()
+            .map(|x| (x.clone(), x))
+            .collect()
     } else {
-        snaps.iter().map(|x| x.0.clone()).collect::<Vec<_>>()
+        snaps
+            .iter()
+            .map(|x| (x.0.clone(), x.2.clone()))
+            .collect::<Vec<_>>()
     };
 
     let mut mounts = Vec::new();
     if conf.same_path.unwrap_or_default() {
-        for path in &dirs {
-            let name = path.replace("/", "_");
+        for (path, orig) in &dirs {
+            let name = orig.replace("/", "_");
             println!("--> Creating consistent path /bk/{}", name);
             std::fs::create_dir_all(&format!("/bk/{name}")).unwrap();
             bind_mount(path, &format!("/bk/{name}"));
-            mounts.push(format!["/bk/{name}"]);
+            mounts.push((format!("/bk/{name}"), path.clone()));
         }
 
         dirs = mounts.clone();
     }
 
-    cmd.extend(dirs.iter().map(|x| x.as_str()));
+    cmd.extend(dirs.iter().map(|x| x.0.as_str()));
 
     run_command(&cmd, conf.passphrase.clone());
 
@@ -125,7 +132,7 @@ pub fn create_archive(conf: &BorgConfig) {
         println!("--> Cleaning up snap {}", cleanup.0);
     }
 
-    for cleanup in &mounts {
+    for (cleanup, _) in &mounts {
         println!("--> Cleaning up mount {}", cleanup);
         umount(&cleanup);
     }
