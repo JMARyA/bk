@@ -65,6 +65,9 @@
 # Make a CephFS snapshot before backup
 # cephfs_snap = true
 
+# Ensure the file paths stay the same between backups
+# same_path = true
+
 # Borg Check Operation
 # [[borg_check]]
 # Repository to check

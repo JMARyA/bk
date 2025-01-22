@@ -84,7 +84,10 @@ pub struct BorgConfig {
     pub ensure_exists: Option<String>,
 
     /// Create CephFS snapshots before the backup.
-    pub cephfs_snap: Option<bool>
+    pub cephfs_snap: Option<bool>,
+
+    /// Bind mount to consistent path
+    pub same_path: Option<bool>,
 }
 
 /// Configuration for a Borg repository integrity check job.

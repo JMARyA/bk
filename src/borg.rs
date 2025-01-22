@@ -10,6 +10,14 @@ pub fn init_repo(path: &str) {
     run_command(&["borg", "init", "--encryption=repokey-blake2", path], None);
 }
 
+pub fn bind_mount(src: &str, dst: &str) {
+    run_command(&["mount", "--bind", src, dst], None);
+}
+
+pub fn umount(mount: &str) {
+    run_command(&["umount", mount], None);
+}
+
 pub fn create_archive(conf: &BorgConfig) {
     let archive_name = format!(
         "BK_{}_{}_{}",
@@ -87,20 +95,39 @@ pub fn create_archive(conf: &BorgConfig) {
             let snap = cephfs_snap_create(&path);
             snaps.push(snap);
         }
-    } else {
-        for path in &conf.src {
-            cmd.push(path);
-        }
     }
 
-    let snap_dirs = snaps.iter().map(|x| x.0.as_str()).collect::<Vec<_>>();
-    cmd.extend(snap_dirs);
+    let mut dirs = if snaps.is_empty() {
+        conf.src.clone()
+    } else {
+        snaps.iter().map(|x| x.0.clone()).collect::<Vec<_>>()
+    };
+
+    let mut mounts = Vec::new();
+    if conf.same_path.unwrap_or_default() {
+        for path in &dirs {
+            let name = path.replace("/", "_");
+            println!("--> Creating consistent path /bk/{}", name);
+            std::fs::create_dir_all(&format!("/bk/{name}")).unwrap();
+            bind_mount(path, &format!("/bk/{name}"));
+            mounts.push(format!["/bk/{name}"]);
+        }
+
+        dirs = mounts.clone();
+    }
+
+    cmd.extend(dirs.iter().map(|x| x.as_str()));
 
     run_command(&cmd, conf.passphrase.clone());
 
     for cleanup in &snaps {
         cephfs_snap_remove_dir(&cleanup.0);
         println!("--> Cleaning up snap {}", cleanup.0);
+    }
+
+    for cleanup in &mounts {
+        println!("--> Cleaning up mount {}", cleanup);
+        umount(&cleanup);
     }
 }
 
