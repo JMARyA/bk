@@ -1,16 +1,23 @@
+matrix:
+  platform:
+    - linux/amd64
+    - linux/arm64
+
+labels:
+  platform: ${platform}
+
 when:
   - event: push
     branch: main
 
 steps:
   - name: "PKGBUILD"
-    image: git.hydrar.de/jmarya/pacco-build:latest
+    image: git.hydrar.de/jmarya/pacco:latest
     commands:
-      - pacman -Syu --noconfirm
-      - buildpkg navos x86_64 pac.hydrar.de "$TOKEN" "$KEY"
+      - pacco build --ci --push navos
     environment:
-      TOKEN:
+      PACCO_HOST: "https://pac.hydrar.de"
+      PACCO_TOKEN:
         from_secret: pacco_token
-      KEY:
+      SIGN_KEY:
         from_secret: sign_key
-
