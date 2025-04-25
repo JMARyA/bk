@@ -4,17 +4,14 @@ use yansi::{Color, Paint};
 mod backup;
 mod borg;
 mod config;
+mod restic;
+
+// TODO : add basic ctrl+c support for ending bk tasks instead of everything and ensure cleanups
 
 fn main() {
     let args = std::env::args().collect::<Vec<_>>();
 
     if let Some(conf) = args.get(1) {
-        if conf.as_str() == "init" {
-            let repo = args.get(2).unwrap();
-            borg::init_repo(repo);
-            std::process::exit(0);
-        }
-
         let conf = toml::from_str(&std::fs::read_to_string(conf).unwrap()).unwrap();
         run_backup(conf);
     } else {
@@ -22,7 +19,7 @@ fn main() {
     }
 }
 
-pub fn run_command(cmd: &[&str], borg_passphrase: Option<String>) -> (String, String) {
+pub fn run_command(cmd: &[&str], env: Option<Vec<(String, String)>>) -> (String, String) {
     println!("--> {} ", cmd.join(" ").paint(Color::Blue));
 
     let mut cmd_setup = std::process::Command::new(cmd[0]);
@@ -32,8 +29,10 @@ pub fn run_command(cmd: &[&str], borg_passphrase: Option<String>) -> (String, St
         .stdout(std::process::Stdio::inherit())
         .stdin(std::process::Stdio::inherit());
 
-    if let Some(pw) = borg_passphrase {
-        cmd_setup = cmd_setup.env("BORG_PASSPHRASE", pw);
+    if let Some(pw) = env {
+        for e in pw {
+            cmd_setup = cmd_setup.env(e.0, e.1);
+        }
     }
 
     let child = cmd_setup.spawn().unwrap();

@@ -3,7 +3,7 @@ use yansi::{Color, Paint};
 use crate::{
     borg,
     config::{Config, RsyncConfig},
-    run_command,
+    restic, run_command,
 };
 
 pub fn ensure_exists(dir: &str) {
@@ -69,6 +69,10 @@ pub fn run_backup(conf: Config) {
 
     for borg in &conf.borg.unwrap_or_default() {
         borg::create_archive(borg);
+    }
+
+    for restic in &conf.restic.unwrap_or_default() {
+        restic::create_archive(restic);
     }
 
     for prune in &conf.borg_prune.unwrap_or_default() {

@@ -20,6 +20,9 @@ pub struct Config {
 
     /// Configuration for Borg prune jobs to manage repository snapshots.
     pub borg_prune: Option<Vec<BorgPruneConfig>>,
+
+    /// Configuration for Borg backup jobs.
+    pub restic: Option<Vec<ResticConfig>>,
 }
 
 /// Configuration for an individual rsync job.
@@ -138,4 +141,53 @@ pub struct BorgPruneConfig {
 
     /// Retain the last `n` yearly archives.
     pub keep_yearly: Option<u32>,
+}
+
+// TODO : restic support
+
+/// Configuration for an individual restic backup job.
+#[derive(Debug, Clone, Deserialize)]
+pub struct ResticConfig {
+    /// Borg repository path.
+    pub repo: String,
+
+    /// Optional passphrase for the repository.
+    pub passphrase: String,
+
+    /// List of source paths to include in the backup.
+    pub src: Vec<String>,
+
+    /// List of patterns to exclude from the backup.
+    pub exclude: Option<Vec<String>>,
+
+    /// Cache directories marked with CACHEDIR.TAG will be excluded
+    pub exclude_caches: Option<bool>,
+
+    /// Reread all files even if unchanged
+    pub reread: Option<bool>,
+
+    /// List of marker files; directories containing these will be excluded.
+    pub exclude_if_present: Option<Vec<String>>,
+
+    /// Whether to limit the backup to a single filesystem.
+    pub one_file_system: Option<bool>,
+
+    /// Read concurrency
+    pub concurrency: Option<u64>,
+
+    /// Optional comment to associate with the backup.
+    pub tags: Option<Vec<String>>,
+
+    /// Compression mode to use for the backup.
+    // TODO :
+    pub compression: Option<String>,
+
+    /// Ensure a specific directory exists before running the backup.
+    pub ensure_exists: Option<String>,
+
+    /// Create CephFS snapshots before the backup.
+    pub cephfs_snap: Option<bool>,
+
+    /// Bind mount to consistent path
+    pub same_path: Option<bool>,
 }

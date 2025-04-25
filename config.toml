@@ -96,3 +96,32 @@
 # keep_weekly = 4
 # keep_monthly = 6
 # keep_yearly = 2
+
+# Restic Operation
+# [[restic]]
+# repo = "/backup/repo.restic"
+# passphrase = "password"
+# src = [
+#   "/dir"
+# ]
+
+# exclude = [
+#     "/exclude"
+# ]
+
+# exclude_caches = true
+# exclude_if_present = [
+#     ".nobk"
+# ]
+# reread = true
+# one_file_system = true
+# concurrency = 4
+# tags = [
+#     "tag1"
+# ]
+
+# compression = "auto"
+
+# ensure_exists = "/dir"
+# cephfs_snap = true
+# same_path = true
