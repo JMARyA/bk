@@ -61,12 +61,12 @@ pub fn create_archive(conf: &ResticConfig) {
         cmd.push("--exclude-caches");
     }
 
-    // TODO : fix compression options
-    let zstd10 = "zstd,10".to_string();
+    let zstd10 = "auto".to_string();
     let comp = conf.compression.as_ref().unwrap_or(&zstd10);
     cmd.push("--compression");
     cmd.push(comp);
 
+    cmd.push("-r");
     cmd.push(&conf.repo);
 
     let mut snaps = Vec::new();
