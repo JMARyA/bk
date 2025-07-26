@@ -1,7 +1,6 @@
 use yansi::{Color, Paint};
 
 use crate::{
-    borg,
     config::{Config, RsyncConfig},
     restic, run_command,
 };
@@ -67,20 +66,8 @@ pub fn run_backup(conf: Config) {
         run_backup_rsync(rsync);
     }
 
-    for borg in &conf.borg.unwrap_or_default() {
-        borg::create_archive(borg);
-    }
-
     for restic in &conf.restic.unwrap_or_default() {
-        restic::create_archive(restic);
-    }
-
-    for prune in &conf.borg_prune.unwrap_or_default() {
-        borg::prune_archive(prune);
-    }
-
-    for check in &conf.borg_check.unwrap_or_default() {
-        borg::check_archive(check);
+        restic::create_archive(restic, conf.path.clone().unwrap_or_default());
     }
 
     if let Some(script) = &conf.end_script {

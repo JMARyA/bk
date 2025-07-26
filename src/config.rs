@@ -1,4 +1,11 @@
+use std::collections::HashMap;
+
 use serde::Deserialize;
+
+use crate::{
+    backup::{cephfs_snap_create, cephfs_snap_remove, ensure_exists},
+    restic::{bind_mount, umount},
+};
 
 /// Configuration structure for the backup system.
 #[derive(Debug, Clone, Deserialize)]
@@ -9,17 +16,12 @@ pub struct Config {
     /// Optional script to run after completing the backup process.
     pub end_script: Option<String>,
 
+    // CDRs
+    /// Local path inputs
+    pub path: Option<HashMap<String, LocalPath>>,
+
     /// Configuration for rsync jobs.
     pub rsync: Option<Vec<RsyncConfig>>,
-
-    /// Configuration for Borg backup jobs.
-    pub borg: Option<Vec<BorgConfig>>,
-
-    /// Configuration for Borg check jobs to verify repository integrity.
-    pub borg_check: Option<Vec<BorgCheckConfig>>,
-
-    /// Configuration for Borg prune jobs to manage repository snapshots.
-    pub borg_prune: Option<Vec<BorgPruneConfig>>,
 
     /// Configuration for Borg backup jobs.
     pub restic: Option<Vec<ResticConfig>>,
@@ -46,104 +48,6 @@ pub struct RsyncConfig {
     /// Create CephFS snapshot before the rsync job.
     pub cephfs_snap: Option<bool>,
 }
-
-/// Configuration for an individual Borg backup job.
-#[derive(Debug, Clone, Deserialize)]
-pub struct BorgConfig {
-    /// Borg repository path.
-    pub repo: String,
-
-    /// Optional passphrase for the repository.
-    pub passphrase: Option<String>,
-
-    /// List of source paths to include in the backup.
-    pub src: Vec<String>,
-
-    /// List of patterns to exclude from the backup.
-    pub exclude: Option<Vec<String>>,
-
-    /// List of marker files; directories containing these will be excluded.
-    pub exclude_if_present: Option<Vec<String>>,
-
-    /// Whether to limit the backup to a single filesystem.
-    pub one_file_system: Option<bool>,
-
-    /// Whether to backup ctime
-    pub ctime: Option<bool>,
-
-    /// Disable backup of ACLs (Access Control Lists).
-    pub no_acls: Option<bool>,
-
-    /// Disable backup of extended attributes.
-    pub no_xattrs: Option<bool>,
-
-    /// Optional comment to associate with the backup.
-    pub comment: Option<String>,
-
-    /// Compression mode to use for the backup.
-    pub compression: Option<String>,
-
-    /// Ensure a specific directory exists before running the backup.
-    pub ensure_exists: Option<String>,
-
-    /// Create CephFS snapshots before the backup.
-    pub cephfs_snap: Option<bool>,
-
-    /// Bind mount to consistent path
-    pub same_path: Option<bool>,
-}
-
-/// Configuration for a Borg repository integrity check job.
-#[derive(Debug, Clone, Deserialize)]
-pub struct BorgCheckConfig {
-    /// Borg repository path.
-    pub repo: String,
-
-    /// Whether to verify the repository's data integrity.
-    pub verify_data: Option<bool>,
-
-    /// Whether to attempt repairs on detected issues.
-    pub repair: Option<bool>,
-}
-
-/// Configuration for a Borg repository pruning job.
-#[derive(Debug, Clone, Deserialize)]
-pub struct BorgPruneConfig {
-    /// Borg repository path.
-    pub repo: String,
-
-    /// Passphrase for accessing the repository.
-    pub passphrase: String,
-
-    /// Retain all archives within this time period.
-    pub keep_within: String,
-
-    /// Retain the last `n` archives.
-    pub keep_last: Option<u32>,
-
-    /// Retain the last `n` secondly archives.
-    pub keep_secondly: Option<u32>,
-
-    /// Retain the last `n` minutely archives.
-    pub keep_minutely: Option<u32>,
-
-    /// Retain the last `n` hourly archives.
-    pub keep_hourly: Option<u32>,
-
-    /// Retain the last `n` daily archives.
-    pub keep_daily: Option<u32>,
-
-    /// Retain the last `n` weekly archives.
-    pub keep_weekly: Option<u32>,
-
-    /// Retain the last `n` monthly archives.
-    pub keep_monthly: Option<u32>,
-
-    /// Retain the last `n` yearly archives.
-    pub keep_yearly: Option<u32>,
-}
-
-// TODO : restic support
 
 /// Configuration for an individual restic backup job.
 #[derive(Debug, Clone, Deserialize)]
@@ -181,13 +85,84 @@ pub struct ResticConfig {
     /// Compression mode to use for the backup.
     // TODO :
     pub compression: Option<String>,
+}
+
+// INPUT
+
+/// Local path input
+#[derive(Debug, Clone, Deserialize)]
+pub struct LocalPath {
+    /// The local path
+    pub path: String,
 
     /// Ensure a specific directory exists before running the backup.
-    pub ensure_exists: Option<String>,
+    pub ensure_exists: Option<bool>,
 
     /// Create CephFS snapshots before the backup.
     pub cephfs_snap: Option<bool>,
 
-    /// Bind mount to consistent path
+    /// Bind mount to consistent path after snapshot creation
     pub same_path: Option<bool>,
+}
+
+pub struct LocalPathRef {
+    pub conf: LocalPath,
+    pub cephfs_snap_name: Option<String>,
+    pub bind_mount_path: Option<String>,
+}
+
+impl LocalPathRef {
+    pub fn from(conf: LocalPath) -> Self {
+        Self {
+            conf,
+            cephfs_snap_name: None,
+            bind_mount_path: None,
+        }
+    }
+
+    pub fn get_target_path(&mut self) -> String {
+        if self.conf.ensure_exists.unwrap_or(true) {
+            ensure_exists(&self.conf.path);
+        }
+
+        if self.conf.cephfs_snap.unwrap_or_default() {
+            let (final_dir, snap_name) = cephfs_snap_create(&self.conf.path);
+            self.cephfs_snap_name = Some(snap_name);
+
+            if self.conf.same_path.unwrap_or_default() {
+                let name = self.conf.path.replace("/", "_");
+                println!("--> Creating consistent path /bk/{}", name);
+                std::fs::create_dir_all(&format!("/bk/{name}")).unwrap();
+                let bind_mount_path = format!("/bk/{name}");
+                bind_mount(&final_dir, &bind_mount_path);
+                self.bind_mount_path = Some(bind_mount_path.clone());
+                return bind_mount_path;
+            } else {
+                return final_dir;
+            }
+        }
+
+        self.conf.path.clone()
+    }
+
+    pub fn cleanup(&self) {
+        if let Some(bmount) = &self.bind_mount_path {
+            println!("--> Cleaning up mount {}", bmount);
+            umount(&bmount);
+        }
+
+        if let Some(snap) = &self.cephfs_snap_name {
+            println!(
+                "--> Cleaning up snap {}",
+                format!("{}@{}", self.conf.path, snap)
+            );
+            cephfs_snap_remove(&self.conf.path, &snap);
+        }
+    }
+}
+
+impl Drop for LocalPathRef {
+    fn drop(&mut self) {
+        self.cleanup();
+    }
 }

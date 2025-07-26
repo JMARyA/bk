@@ -2,7 +2,6 @@ use backup::run_backup;
 use yansi::{Color, Paint};
 
 mod backup;
-mod borg;
 mod config;
 mod restic;
 
