@@ -35,7 +35,7 @@ check() {
 package() {
     cd "$srcdir/$pkgname"
     install -Dm755 "target/release/bk" "$pkgdir/usr/bin/bk"
-    install -Dm644 "src/systemd/bk.service" "$pkgdir/usr/lib/systemd/system/bk.service"
-    install -Dm644 "src/systemd/bk.timer" "$pkgdir/usr/lib/systemd/system/bk.timer"
+    install -Dm644 "systemd/bk.service" "$pkgdir/usr/lib/systemd/system/bk.service"
+    install -Dm644 "systemd/bk.timer" "$pkgdir/usr/lib/systemd/system/bk.timer"
     install -Dm644 "config.toml" "$pkgdir/etc/bk.toml"
 }
