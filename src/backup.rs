@@ -67,7 +67,11 @@ pub fn run_backup(conf: Config) {
     }
 
     for restic in &conf.restic.unwrap_or_default() {
-        restic::create_archive(restic, conf.path.clone().unwrap_or_default());
+        restic::create_archive(
+            restic,
+            conf.path.clone().unwrap_or_default(),
+            conf.restic_target.clone().unwrap_or_default(),
+        );
     }
 
     if let Some(script) = &conf.end_script {

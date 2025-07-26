@@ -24,8 +24,7 @@
 
 # Restic Operation
 # [[restic]]
-# repo = "/backup/repo.restic"
-# passphrase = "password"
+# targets = ["my_restic_target"] 
 # src = [
 #   "my_path"
 # ]
@@ -47,6 +46,11 @@
 
 # compression = "auto"
 
+# Restic Targets
+
+# [restic_target.my_restic_target]
+# repo = "/backup/repo.restic"
+# passphrase = "password"
 
 # Path
 

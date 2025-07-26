@@ -23,6 +23,9 @@ pub struct Config {
     /// Configuration for rsync jobs.
     pub rsync: Option<Vec<RsyncConfig>>,
 
+    /// Restic targets
+    pub restic_target: Option<HashMap<String, ResticTarget>>,
+
     /// Configuration for Borg backup jobs.
     pub restic: Option<Vec<ResticConfig>>,
 }
@@ -49,14 +52,21 @@ pub struct RsyncConfig {
     pub cephfs_snap: Option<bool>,
 }
 
-/// Configuration for an individual restic backup job.
+/// Configuration for a restic target.
 #[derive(Debug, Clone, Deserialize)]
-pub struct ResticConfig {
-    /// Borg repository path.
+pub struct ResticTarget {
+    /// Restic repository URL.
     pub repo: String,
 
     /// Optional passphrase for the repository.
     pub passphrase: String,
+}
+
+/// Configuration for an individual restic backup job.
+#[derive(Debug, Clone, Deserialize)]
+pub struct ResticConfig {
+    /// Restic targets
+    pub targets: Vec<String>,
 
     /// List of source paths to include in the backup.
     pub src: Vec<String>,
