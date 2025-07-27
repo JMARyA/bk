@@ -16,6 +16,10 @@ CDRs are namespace bounded.
 Input: `Path`, `Raw`, `Command`
 Target: `Filesystem`, `Restic`, `SSH`
 
+## Notification
+Notifications when backups fail, or not.
+Via mail, webhook, etc
+
 ## I want to backup
 
 ### Kubernetes
