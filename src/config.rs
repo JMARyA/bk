@@ -93,7 +93,6 @@ pub struct ResticConfig {
     pub tags: Option<Vec<String>>,
 
     /// Compression mode to use for the backup.
-    // TODO :
     pub compression: Option<String>,
 }
 
