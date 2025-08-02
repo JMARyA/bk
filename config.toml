@@ -22,87 +22,11 @@
 # Make a CephFS snapshot before rsync
 # cephfs_snap = true
 
-# Borg Operation
-# [[borg]]
-# Repo to backup to
-# repo = "/backup/repo.borg"
-
-# Passphrase
-# passphrase = "pass"
-
-# Source Directories
-# src = [ "/home/me/.config" ]
-
-# Excludes
-# exclude = [
-#    "some/dir"
-# ]
-
-# Exclude if present (example: Do not backup directories with `.nobackup`)
-# exclude_if_present = [".nobackup"]
-
-# Stay in one filesystem
-# one_file_system = true
-
-# Backup change time
-# ctime = false
-
-# Do not backup ACLs
-# no_acls = true
-
-# Do not backup extended attributes
-# no_xattrs = true
-
-# Comment to add to the backup
-# comment = "Backup of /home/me/"
-
-# Compression
-# compression = "zstd,10"
-
-# Ensure directory exists before backup
-# ensure_exists = "/home/me"
-
-# Make a CephFS snapshot before backup
-# cephfs_snap = true
-
-# Ensure the file paths stay the same between backups
-# same_path = true
-
-# Borg Check Operation
-# [[borg_check]]
-# Repository to check
-# repo = "/backup/repo.borg"
-
-# Full Data Verify
-# verify_data = true
-
-# Repair Attempt
-# repair = false
-
-# Borg Prune Operation
-# [[borg_prune]]
-# Repository to prune
-# repo = "/backup/repo.borg"
-
-# Passphrase
-# passphrase = "pass"
-
-# keep_within = "30d"
-# keep_last = 20
-# keep_secondly = 3
-# keep_minutely = 3
-# keep_hourly = 10
-# keep_daily = 7
-# keep_weekly = 4
-# keep_monthly = 6
-# keep_yearly = 2
-
 # Restic Operation
 # [[restic]]
-# repo = "/backup/repo.restic"
-# passphrase = "password"
+# targets = ["my_restic_target"] 
 # src = [
-#   "/dir"
+#   "my_path"
 # ]
 
 # exclude = [
@@ -122,6 +46,16 @@
 
 # compression = "auto"
 
+# Restic Targets
+
+# [restic_target.my_restic_target]
+# repo = "/backup/repo.restic"
+# passphrase = "password"
+
+# Path
+
+# [path.my_path]
+# path = "/my_path"
 # ensure_exists = "/dir"
 # cephfs_snap = true
 # same_path = true
