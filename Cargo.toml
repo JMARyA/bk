@@ -7,6 +7,10 @@ edition = "2024"
 name = "bk"
 path = "src/main.rs"
 
+[lib]
+name = "bk"
+path = "src/lib.rs"
+
 [dependencies]
 chrono = "0.4.39"
 log = "0.4.27"
