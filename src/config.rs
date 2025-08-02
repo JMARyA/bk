@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     backup::{cephfs_snap_create, cephfs_snap_remove, ensure_exists},
@@ -8,7 +8,7 @@ use crate::{
 };
 
 /// Configuration structure for the backup system.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Config {
     /// Optional script to run before starting the backup process.
     pub start_script: Option<String>,
@@ -31,7 +31,7 @@ pub struct Config {
 }
 
 /// Configuration for an individual rsync job.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct RsyncConfig {
     /// Source path for rsync.
     pub src: String,
@@ -53,7 +53,7 @@ pub struct RsyncConfig {
 }
 
 /// Configuration for a restic target.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ResticTarget {
     /// Restic repository URL.
     pub repo: String,
@@ -63,7 +63,7 @@ pub struct ResticTarget {
 }
 
 /// Configuration for an individual restic backup job.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ResticConfig {
     /// Restic targets
     pub targets: Vec<String>,
@@ -99,7 +99,7 @@ pub struct ResticConfig {
 // INPUT
 
 /// Local path input
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct LocalPath {
     /// The local path
     pub path: String,
