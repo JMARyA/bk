@@ -22,6 +22,44 @@ Via mail, webhook, etc
 
 ## I want to backup
 
+### Requirements
+You need at least one backup location.
+
+This can be either:
+- [Local Filesystem](#local-filesystem-target)
+- [SSH Remote](#ssh-remote-target)
+- [S3 Remote](#s3-remote-target)
+
+#### Local Filesystem Target
+To use a local filesystem:
+
+```toml
+[restic_target.my_restic_target]
+repo = "/backup/repo.restic"
+passphrase = "password"
+```
+
+#### SSH Remote Target
+Add this to your `bk.toml` configuration:
+
+```toml
+[restic_target.offsite]
+repo = "sftp:myhost:/backup/repo.restic"
+passphrase = "password"
+```
+
+For simple auth, add this to `.ssh/config`:
+
+```
+Host myhost
+    Hostname <hostname>
+    User <user>
+    IdentityFile <ssh_key>
+```
+
+#### S3 Remote Target
+#todo
+
 ### Kubernetes
 #todo: docs
 
