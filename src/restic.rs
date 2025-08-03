@@ -142,7 +142,7 @@ pub fn create_archive(
                     String::new()
                 }
             );
-            ssh_opt = Some(format!("sftp.command=\"{ssh_cmd}\""));
+            ssh_opt = Some(format!("sftp.command={ssh_cmd}"));
         }
 
         if let Some(ssh_opt) = &ssh_opt {
