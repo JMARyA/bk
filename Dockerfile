@@ -14,7 +14,7 @@ RUN pacman-key --init && \
     pacman-key --populate navos && \
     [[ "$(uname -m)" == arm* || "$(uname -m)" == aarch64 ]] && pacman-key --populate archlinuxarm || true && \
     pacman -Syu --noconfirm && \
-    pacman -Syu --noconfirm rsync restic
+    pacman -Syu --noconfirm rsync restic openssh
 
 COPY --from=builder /app/target/release/bk /usr/bin/bk
 
