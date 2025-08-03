@@ -57,3 +57,6 @@ Additional snapshot tags
 
 ### `compression`
 Restic compression
+
+### `quiet`
+Restic `--quiet` option

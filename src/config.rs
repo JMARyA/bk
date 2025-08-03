@@ -73,7 +73,7 @@ pub struct ResticTarget {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct S3Creds {
     pub access_key: String,
-    pub secret_key: String
+    pub secret_key: String,
 }
 
 /// Configuration for an individual restic backup job.
@@ -111,6 +111,9 @@ pub struct ResticConfig {
 
     /// Compression mode to use for the backup.
     pub compression: Option<String>,
+
+    // Quiet mode
+    pub quiet: Option<bool>,
 }
 
 // INPUT
