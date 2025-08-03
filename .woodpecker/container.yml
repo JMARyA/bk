@@ -3,10 +3,10 @@ when:
     branch: main
 
 steps:
-  - name: build
+  - name: build-amd64
     image: woodpeckerci/plugin-docker-buildx
     settings:
-      platforms: linux/amd64,linux/arm64
+      platforms: linux/amd64
       repo: git.hydrar.de/jmarya/bk
       registry: git.hydrar.de
       tags: latest
