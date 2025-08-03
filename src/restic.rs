@@ -53,7 +53,7 @@ pub fn create_archive(
         })
         .collect();
 
-        let mut targets_results = HashMap::new();
+    let mut targets_results = HashMap::new();
 
     for repo in targets {
         log::info!(
@@ -137,14 +137,16 @@ pub enum ResticError {
     /// Return Code 11 - repository is already locked
     RepositoryLocked,
     /// Return Code 12 - incorrect password
-    IncorrectPassword
+    IncorrectPassword,
 }
 
 impl std::fmt::Display for ResticError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
             ResticError::Fatal => "Fatal Error (no snapshot created)",
-            ResticError::Incomplete => "some source data could not be read (incomplete snapshot created)",
+            ResticError::Incomplete => {
+                "some source data could not be read (incomplete snapshot created)"
+            }
             ResticError::RepositoryUnavailable => "repository does not exist",
             ResticError::RepositoryLocked => "repository is already locked",
             ResticError::IncorrectPassword => "incorrect password",
@@ -160,7 +162,7 @@ impl ResticError {
             10 => Some(Self::RepositoryUnavailable),
             11 => Some(Self::RepositoryLocked),
             12 => Some(Self::IncorrectPassword),
-            _ => None
+            _ => None,
         }
     }
 }

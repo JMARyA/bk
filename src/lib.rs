@@ -2,6 +2,7 @@ use yansi::{Color, Paint};
 
 pub mod backup;
 pub mod config;
+pub mod notify;
 pub mod restic;
 
 pub fn run_command(cmd: &[&str], env: Option<Vec<(String, String)>>) -> (String, String, i32) {

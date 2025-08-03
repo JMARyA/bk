@@ -20,6 +20,21 @@ Target: `Filesystem`, `Restic`, `SSH`
 Notifications when backups fail, or not.
 Via mail, webhook, etc
 
+```toml
+[ntfy.my_ntfy.ntfy]
+host = <host>
+topic = <topic>
+auth.user = <user>
+auth.pass = <pass>
+```
+
+And reference in a backup:
+```toml
+[[restic]]
+...
+ntfy = ["my_ntfy"]
+```
+
 ## I want to backup
 
 ### Requirements

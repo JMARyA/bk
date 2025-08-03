@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     backup::{cephfs_snap_create, cephfs_snap_remove, ensure_exists},
+    notify::ntfy,
     restic::{bind_mount, umount},
 };
 
@@ -28,6 +29,9 @@ pub struct Config {
 
     /// Configuration for Borg backup jobs.
     pub restic: Option<Vec<ResticConfig>>,
+
+    /// Ntfy targets
+    pub ntfy: Option<HashMap<String, NtfyTarget>>,
 }
 
 /// Configuration for an individual rsync job.
@@ -65,6 +69,9 @@ pub struct ResticTarget {
 /// Configuration for an individual restic backup job.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ResticConfig {
+    /// Notifications
+    pub ntfy: Option<Vec<String>>,
+
     /// Restic targets
     pub targets: Vec<String>,
 
@@ -174,4 +181,41 @@ impl Drop for LocalPathRef {
     fn drop(&mut self) {
         self.cleanup();
     }
+}
+
+// Notification
+
+/// Ntfy configuration
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct NtfyTarget {
+    pub ntfy: Option<NtfyConfiguration>,
+}
+
+impl NtfyTarget {
+    pub fn send_notification(&self, msg: &str) {
+        if let Some(ntfy_conf) = &self.ntfy {
+            ntfy(
+                &ntfy_conf.host,
+                &ntfy_conf.topic,
+                ntfy_conf.auth.clone().map(|x| (x.user, x.pass)),
+                msg,
+            )
+            .unwrap();
+        }
+    }
+}
+
+/// Ntfy configuration
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct NtfyConfiguration {
+    pub host: String,
+    pub topic: String,
+    pub auth: Option<NtfyAuth>,
+}
+
+/// Ntfy configuration
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct NtfyAuth {
+    pub user: String,
+    pub pass: String,
 }

@@ -74,8 +74,29 @@ pub fn run_backup(conf: Config) {
         );
 
         for (target, res) in res {
+            let notify_provider = conf.ntfy.clone().unwrap_or_default();
+
             if let Err(e) = res {
-                log::error!("Backup to target {target} failed: {e}")
+                log::error!("Backup to target {target} failed: {e}");
+
+                for ntfy_key in restic.ntfy.clone().unwrap_or_default() {
+                    let ntfy_opt = notify_provider.get(&ntfy_key).unwrap();
+                    ntfy_opt.send_notification(&format!(
+                        "🚨 Backup failed for {} to {}: {e}",
+                        restic.src.join(", "),
+                        target
+                    ));
+                }
+            } else {
+                log::info!("Backup successfull for {target}");
+
+                for ntfy_key in restic.ntfy.clone().unwrap_or_default() {
+                    let ntfy_opt = notify_provider.get(&ntfy_key).unwrap();
+                    ntfy_opt.send_notification(&format!(
+                        "✅ Backup successful for {:?} to {}",
+                        restic.src, target
+                    ));
+                }
             }
         }
     }
