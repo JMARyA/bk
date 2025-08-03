@@ -65,6 +65,9 @@ pub struct ResticTarget {
     /// S3 Credentials
     pub s3: Option<S3Creds>,
 
+    /// SSH Options
+    pub ssh: Option<SSHOptions>,
+
     /// Optional passphrase for the repository.
     pub passphrase: String,
 }
@@ -74,6 +77,13 @@ pub struct ResticTarget {
 pub struct S3Creds {
     pub access_key: String,
     pub secret_key: String,
+}
+
+/// SSH Options
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct SSHOptions {
+    pub port: Option<u16>,
+    pub identity: String,
 }
 
 /// Configuration for an individual restic backup job.

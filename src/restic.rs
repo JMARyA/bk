@@ -126,6 +126,11 @@ pub fn create_archive(
             env.push(("AWS_SECRET_ACCESS_KEY".to_string(), s3.secret_key.clone()));
         }
 
+        if let Some(ssh) = &repo.ssh {
+            env.push(("RESTIC_SFTP_COMMAND".to_string(), 
+            format!("ssh -i {} {} -o StrictHostKeyChecking=no %u@%h -s sftp", ssh.identity, if let Some(p) = ssh.port { format!("-p {p}") } else { String::new() })));
+        }
+
         let res = run_command(&cmd, Some(env));
 
         if res.2 == 0 {
