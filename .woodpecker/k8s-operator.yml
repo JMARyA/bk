@@ -11,6 +11,7 @@ steps:
       registry: git.hydrar.de
       tags: latest
       dockerfile: k8s-operator/Dockerfile
+      context: k8s-operator/
       username: jmarya
       password:
         from_secret: registry_token
