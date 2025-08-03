@@ -60,3 +60,6 @@ Restic compression
 
 ### `quiet`
 Restic `--quiet` option
+
+### `host`
+Restic `--host` option

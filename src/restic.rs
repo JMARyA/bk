@@ -107,6 +107,11 @@ pub fn create_archive(
             cmd.push("--quiet");
         }
 
+        if let Some(host) = conf.host {
+            cmd.push("--host");
+            cmd.push(host.as_str());
+        }
+
         cmd.push("-r");
         cmd.push(&repo.repo);
 
