@@ -126,15 +126,30 @@ pub fn create_archive(
             env.push(("AWS_SECRET_ACCESS_KEY".to_string(), s3.secret_key.clone()));
         }
 
+        let mut ssh_opt = None;
+
         if let Some(ssh) = &repo.ssh {
             let remote = repo.repo.trim_start_matches("sftp:");
             let hostpart = remote.split(':').collect::<Vec<_>>();
             let hostpart = hostpart.first().unwrap();
             let (user, host) = hostpart.split_once('@').unwrap();
-            env.push(("RESTIC_SFTP_COMMAND".to_string(), 
-            format!("ssh -i {} {} -o StrictHostKeyChecking=no {user}@{host} -s sftp", ssh.identity, if let Some(p) = ssh.port { format!("-p {p}") } else { String::new() })));
+            let ssh_cmd = format!(
+                "ssh -i {} {} -o StrictHostKeyChecking=no {user}@{host} -s sftp",
+                ssh.identity,
+                if let Some(p) = ssh.port {
+                    format!("-p {p}")
+                } else {
+                    String::new()
+                }
+            );
+            ssh_opt = Some(format!("sftp.command=\"{ssh_cmd}\""));
         }
-        
+
+        if let Some(ssh_opt) = &ssh_opt {
+            cmd.push("-o");
+            cmd.push(ssh_opt);
+        }
+
         let res = run_command(&cmd, Some(env));
 
         if res.2 == 0 {

@@ -126,7 +126,7 @@ pub struct ResticConfig {
     pub quiet: Option<bool>,
 
     /// Host override
-    pub host: Option<String>
+    pub host: Option<String>,
 }
 
 // INPUT
