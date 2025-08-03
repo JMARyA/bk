@@ -1,0 +1,32 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: bk-operator
+  namespace: bk-system
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "services"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["batch"]
+    resources: ["cronjobs"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["bk.jmarya.me"]
+    resources: ["restic-repositories", "node-backups"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: bk-rolebinding
+  namespace: bk-system
+subjects:
+  - kind: ServiceAccount
+    name: bk-operator
+    namespace: bk-system
+roleRef:
+  kind: Role
+  name: bk-operator
+  apiGroup: rbac.authorization.k8s.io

@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bk-operator
+  namespace: bk-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bk-operator
+  template:
+    metadata:
+      labels:
+        app: bk-operator
+    spec:
+      serviceAccountName: bk-operator
+      containers:
+        - name: bk-k8s
+          image: git.hydrar.de/jmarya/bk-k8s:latest
+          imagePullPolicy: IfNotPresent
