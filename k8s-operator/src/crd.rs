@@ -14,12 +14,18 @@ use serde::{Deserialize, Serialize};
 pub struct ResticRepositorySpec {
     pub endpoint: String,
     pub s3: Option<S3Config>,
+    pub ssh: Option<SSHConfig>,
     pub passphrase: SecretKeyRef,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone, JsonSchema)]
 pub struct S3Config {
     pub access_key: SecretKeyRef,
+    pub secret_key: SecretKeyRef,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, JsonSchema)]
+pub struct SSHConfig {
     pub secret_key: SecretKeyRef,
 }
 

@@ -1,8 +1,3 @@
-use kube::api::{Patch, PatchParams};
-use kube::{Api, Client, Error, Resource};
-use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
-
 /// Adds a finalizer to a Kubernetes resource of type `$resource_ty`.
 ///
 /// This macro patches the specified resource in the given namespace to add

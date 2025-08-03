@@ -5,6 +5,7 @@ use std::sync::Arc;
 use bk::config::ResticConfig;
 use bk::config::ResticTarget;
 use bk::config::S3Creds;
+use bk::config::SSHOptions;
 use futures::stream::StreamExt;
 use k8s_openapi::api::apps::v1::Deployment;
 use k8s_openapi::api::batch::v1::CronJob;
@@ -30,6 +31,7 @@ use kube::{Api, client::Client, runtime::Controller, runtime::controller::Action
 use tokio::time::Duration;
 
 use crate::crd::ResticRepository;
+use crate::crd::SSHConfig;
 use crate::crd::SecretKeyRef;
 
 pub mod crd;
@@ -315,9 +317,21 @@ impl BackupCronJob {
 
         let repo_key = get_secret(client.clone(), &ns, backend.spec.passphrase).await;
 
-        let volume_tags: Vec<String> = volumes.iter().map(|x| {
-            format!("volume_{}", x.name)
-        }).collect();
+        let volume_tags: Vec<String> = volumes
+            .iter()
+            .map(|x| format!("volume_{}", x.name))
+            .collect();
+
+        if let Some(ssh) = &backend.spec.ssh {
+            let (vol, mount) = mount_secret_file(
+                "ssh-identity".to_string(),
+                ssh.secret_key.secretName.clone(),
+                ssh.secret_key.secretKey.clone(),
+                "/etc/bk-ssh".to_string(),
+            );
+            volumes.push(vol);
+            volume_mounts.push(mount);
+        }
 
         // deployment: backup all volumes
         let conf = bk::config::Config {
@@ -335,6 +349,14 @@ impl BackupCronJob {
                             Some(S3Creds {
                                 access_key: get_secret(client.clone(), &ns, s3.access_key).await,
                                 secret_key: get_secret(client.clone(), &ns, s3.secret_key).await,
+                            })
+                        } else {
+                            None
+                        },
+                        ssh: if let Some(ssh) = &backend.spec.ssh {
+                            Some(SSHOptions {
+                                port: None,
+                                identity: format!("/etc/bk-ssh/{}", ssh.secret_key.secretKey),
                             })
                         } else {
                             None
@@ -357,7 +379,7 @@ impl BackupCronJob {
                 compression: None,
                 ntfy: None,
                 quiet: None,
-                host: Some(name.clone())
+                host: Some(name.clone()),
             }]),
             ntfy: None,
         };
@@ -378,28 +400,14 @@ impl BackupCronJob {
         secrets.create(&PostParams::default(), &secret).await;
 
         // add config secret to volumes
-        volumes.push(Volume {
-            name: "bk-config".to_string(),
-            secret: SecretVolumeSource {
-                secret_name: Some(format!("bk-backup-secret-{name}")),
-                items: vec![KeyToPath {
-                    key: "bk.toml".to_string(),
-                    path: "bk.toml".to_string(),
-                    ..Default::default()
-                }]
-                .into(),
-                ..Default::default()
-            }
-            .into(),
-            ..Default::default()
-        });
-
-        volume_mounts.push(VolumeMount {
-            name: "bk-config".to_string(),
-            mount_path: "/etc/bk-config".to_string(),
-            read_only: true.into(),
-            ..Default::default()
-        });
+        let (vol, mount) = mount_secret_file(
+            "bk-config".to_string(),
+            format!("bk-backup-secret-{name}"),
+            "bk.toml".to_string(),
+            "/etc/bk-config".to_string(),
+        );
+        volumes.push(vol);
+        volume_mounts.push(mount);
 
         CronJob {
             metadata: ObjectMeta {
@@ -452,4 +460,36 @@ pub async fn get_secret(client: Client, ns: &str, reference: SecretKeyRef) -> St
 
     let value = String::from_utf8(value.0.clone()).unwrap();
     value
+}
+
+pub fn mount_secret_file(
+    name: String,
+    secret_name: String,
+    secret_key: String,
+    path: String,
+) -> (Volume, VolumeMount) {
+    (
+        Volume {
+            name: name.clone(),
+            secret: SecretVolumeSource {
+                secret_name: Some(secret_name),
+                items: vec![KeyToPath {
+                    key: secret_key.clone(),
+                    path: secret_key,
+                    mode: Some(0o600),
+                    ..Default::default()
+                }]
+                .into(),
+                ..Default::default()
+            }
+            .into(),
+            ..Default::default()
+        },
+        VolumeMount {
+            name: name,
+            mount_path: path,
+            read_only: true.into(),
+            ..Default::default()
+        },
+    )
 }
