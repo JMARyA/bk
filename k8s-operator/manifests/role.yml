@@ -1,8 +1,7 @@
 apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
+kind: ClusterRole
 metadata:
-  name: bk-operator
-  namespace: bk-system
+  name: bk-operator-cluster-role
 rules:
   - apiGroups: [""]
     resources: ["pods", "services"]
@@ -18,15 +17,14 @@ rules:
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
+kind: ClusterRoleBinding
 metadata:
-  name: bk-rolebinding
-  namespace: bk-system
+  name: bk-operator-cluster-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: bk-operator-cluster-role
 subjects:
   - kind: ServiceAccount
     name: bk-operator
     namespace: bk-system
-roleRef:
-  kind: Role
-  name: bk-operator
-  apiGroup: rbac.authorization.k8s.io
