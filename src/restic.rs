@@ -107,9 +107,9 @@ pub fn create_archive(
             cmd.push("--quiet");
         }
 
-        if let Some(host) = conf.host {
+        if let Some(host) = &conf.host {
             cmd.push("--host");
-            cmd.push(host.as_str());
+            cmd.push(host);
         }
 
         cmd.push("-r");
