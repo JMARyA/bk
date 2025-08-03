@@ -108,12 +108,18 @@ pub fn create_archive(
 
         cmd.extend(dirs.iter().map(|x| x.as_str()));
 
+        let mut env = Vec::new();
+
+        env.push(("RESTIC_PASSWORD".to_string(), repo.passphrase.clone(),));
+
+        if let Some(s3) = &repo.s3 {
+            env.push(("AWS_ACCESS_KEY_ID".to_string(), s3.access_key.clone()));
+            env.push(("AWS_SECRET_ACCESS_KEY".to_string(), s3.secret_key.clone()));
+        }
+
         let res = run_command(
             &cmd,
-            Some(vec![(
-                "RESTIC_PASSWORD".to_string(),
-                repo.passphrase.clone(),
-            )]),
+            Some(env),
         );
 
         if res.2 == 0 {
