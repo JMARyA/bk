@@ -4,7 +4,7 @@ pub mod backup;
 pub mod config;
 pub mod restic;
 
-pub fn run_command(cmd: &[&str], env: Option<Vec<(String, String)>>) -> (String, String) {
+pub fn run_command(cmd: &[&str], env: Option<Vec<(String, String)>>) -> (String, String, i32) {
     println!("--> {} ", cmd.join(" ").paint(Color::Blue));
 
     let mut cmd_setup = std::process::Command::new(cmd[0]);
@@ -38,5 +38,5 @@ pub fn run_command(cmd: &[&str], env: Option<Vec<(String, String)>>) -> (String,
         eprintln!("{stderr}");
     }
 
-    (output, stderr)
+    (output, stderr, status.status.code().unwrap())
 }

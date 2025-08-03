@@ -67,11 +67,17 @@ pub fn run_backup(conf: Config) {
     }
 
     for restic in &conf.restic.unwrap_or_default() {
-        restic::create_archive(
+        let res = restic::create_archive(
             restic,
             conf.path.clone().unwrap_or_default(),
             conf.restic_target.clone().unwrap_or_default(),
         );
+
+        for (target, res) in res {
+            if let Err(e) = res {
+                log::error!("Backup to target {target} failed: {e}")
+            }
+        }
     }
 
     if let Some(script) = &conf.end_script {
@@ -93,10 +99,10 @@ pub fn cephfs_snap_create(dir: &str) -> (String, String) {
     let snap_name = format!("SNAP_{now}");
     let snap_dir = path.join(".snap").join(&snap_name);
 
-    println!("--> Creating snapshot {} on {}", snap_name, dir);
+    log::info!("Creating snapshot {} on {}", snap_name, dir);
     if std::fs::create_dir(&snap_dir).is_err() {
         if !std::fs::exists(&snap_dir).unwrap() {
-            println!("{} Could not create snapshot", "Error:".paint(Color::Red));
+            log::error!("{} Could not create snapshot", "Error:".paint(Color::Red));
             std::process::exit(1);
         }
     }
@@ -108,13 +114,13 @@ pub fn cephfs_snap_remove(dir: &str, snap: &str) {
     let path = std::path::Path::new(dir);
     let snap_dir = path.join(".snap").join(snap);
 
-    println!("--> Removing snapshot {} on {}", snap, dir);
+    log::info!("Removing snapshot {} on {}", snap, dir);
     std::fs::remove_dir(snap_dir).unwrap()
 }
 
 pub fn cephfs_snap_remove_dir(dir: &str) {
     let path = std::path::Path::new(dir);
 
-    println!("--> Removing snapshot {}", path.to_str().unwrap());
+    log::info!("Removing snapshot {}", path.to_str().unwrap());
     std::fs::remove_dir(path).unwrap()
 }

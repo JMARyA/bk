@@ -140,7 +140,7 @@ impl LocalPathRef {
 
             if self.conf.same_path.unwrap_or_default() {
                 let name = self.conf.path.replace("/", "_");
-                println!("--> Creating consistent path /bk/{}", name);
+                log::info!("Creating consistent path /bk/{}", name);
                 std::fs::create_dir_all(&format!("/bk/{name}")).unwrap();
                 let bind_mount_path = format!("/bk/{name}");
                 bind_mount(&final_dir, &bind_mount_path);
@@ -156,13 +156,13 @@ impl LocalPathRef {
 
     pub fn cleanup(&self) {
         if let Some(bmount) = &self.bind_mount_path {
-            println!("--> Cleaning up mount {}", bmount);
+            log::info!("Cleaning up mount {}", bmount);
             umount(&bmount);
         }
 
         if let Some(snap) = &self.cephfs_snap_name {
-            println!(
-                "--> Cleaning up snap {}",
+            log::info!(
+                "Cleaning up snapshot {}",
                 format!("{}@{}", self.conf.path, snap)
             );
             cephfs_snap_remove(&self.conf.path, &snap);
