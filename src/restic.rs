@@ -127,10 +127,14 @@ pub fn create_archive(
         }
 
         if let Some(ssh) = &repo.ssh {
+            let remote = repo.repo.trim_start_matches("sftp:");
+            let hostpart = remote.split(':').collect::<Vec<_>>();
+            let hostpart = hostpart.first().unwrap();
+            let (user, host) = hostpart.split_once('@').unwrap();
             env.push(("RESTIC_SFTP_COMMAND".to_string(), 
-            format!("ssh -i {} {} -o StrictHostKeyChecking=no %u@%h -s sftp", ssh.identity, if let Some(p) = ssh.port { format!("-p {p}") } else { String::new() })));
+            format!("ssh -i {} {} -o StrictHostKeyChecking=no {user}@{host} -s sftp", ssh.identity, if let Some(p) = ssh.port { format!("-p {p}") } else { String::new() })));
         }
-
+        
         let res = run_command(&cmd, Some(env));
 
         if res.2 == 0 {
