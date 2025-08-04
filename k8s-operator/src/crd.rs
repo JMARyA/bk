@@ -50,4 +50,6 @@ pub struct NodeBackupSpec {
     pub paths: Vec<String>,
     pub schedule: String,
     pub node: String,
+    pub quiet: Option<bool>,
+    pub cephfs_snap: Option<bool>,
 }

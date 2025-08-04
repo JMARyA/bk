@@ -110,12 +110,26 @@ async fn reconcile(
             )
             .await?;
 
-            let conf = BackupCronJob::build_bk_conf(
+            let mut conf = BackupCronJob::build_bk_conf(
                 volume_mounts.clone(),
                 targets,
                 node_backup.spec.repository.clone(),
                 node_backup.spec.node.clone(),
             );
+
+            if let Some(quiet) = node_backup.spec.quiet {
+                conf.restic.as_mut().unwrap().first_mut().unwrap().quiet = Some(quiet);
+            }
+
+            if let Some(cephfs_snap) = node_backup.spec.cephfs_snap {
+                if cephfs_snap {
+                    conf.path
+                        .as_mut()
+                        .unwrap()
+                        .iter_mut()
+                        .for_each(|x| x.1.cephfs_snap = Some(true));
+                }
+            }
 
             create_or_update_secret(
                 client.clone(),

@@ -20,12 +20,18 @@ spec:
         properties:
           spec:
             properties:
+              cephfs_snap:
+                nullable: true
+                type: boolean
               node:
                 type: string
               paths:
                 items:
                   type: string
                 type: array
+              quiet:
+                nullable: true
+                type: boolean
               repository:
                 type: string
               schedule:
