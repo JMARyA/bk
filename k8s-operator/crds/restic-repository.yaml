@@ -19,10 +19,13 @@ spec:
         description: Auto-generated derived type for ResticRepositorySpec via `CustomResource`
         properties:
           spec:
+            description: Restic Repository
             properties:
               endpoint:
+                description: The endpoint of the repository. Can be either a path, s3 or sftp.
                 type: string
               passphrase:
+                description: Repository password
                 properties:
                   secretKey:
                     type: string
@@ -33,6 +36,7 @@ spec:
                 - secretName
                 type: object
               s3:
+                description: S3 credentials
                 nullable: true
                 properties:
                   access_key:
@@ -60,6 +64,7 @@ spec:
                 - secret_key
                 type: object
               ssh:
+                description: SSH credentials
                 nullable: true
                 properties:
                   secret_key:

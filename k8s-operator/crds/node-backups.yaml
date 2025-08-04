@@ -19,22 +19,29 @@ spec:
         description: Auto-generated derived type for NodeBackupSpec via `CustomResource`
         properties:
           spec:
+            description: Resource for backing up the filesystem of a node
             properties:
               cephfs_snap:
+                description: Create a cephFS snapshot before backup
                 nullable: true
                 type: boolean
               node:
+                description: Which node the backup runs on
                 type: string
               paths:
+                description: Source paths to backup
                 items:
                   type: string
                 type: array
               quiet:
+                description: Quiet mode
                 nullable: true
                 type: boolean
               repository:
+                description: Target repository
                 type: string
               schedule:
+                description: Cron schedule for the backup
                 type: string
             required:
             - node
