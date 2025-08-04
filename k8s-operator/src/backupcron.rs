@@ -53,13 +53,17 @@ impl BkOptions {
 pub struct BackupCronJob {}
 
 impl BackupCronJob {
+    pub fn path_to_name(path: &str) -> String {
+        path.replace("/", "-").trim_start_matches("-").to_string()
+    }
+
     pub fn get_vols_of_nodebackup(nodebackup: &NodeBackup) -> (Vec<Volume>, Vec<VolumeMount>) {
         let mut vol = Vec::new();
         let mut volm = Vec::new();
 
         for path in &nodebackup.spec.paths {
             vol.push(Volume {
-                name: path.replace("/", "_"),
+                name: Self::path_to_name(&path),
                 host_path: Some(HostPathVolumeSource {
                     path: path.clone(),
                     ..Default::default()
@@ -67,8 +71,8 @@ impl BackupCronJob {
                 ..Default::default()
             });
             volm.push(VolumeMount {
-                name: path.replace("/", "_"),
-                mount_path: path.clone(),
+                name: Self::path_to_name(&path),
+                mount_path: format!("/host{path}"),
                 ..Default::default()
             });
         }

@@ -10,6 +10,7 @@ use kube::api::PostParams;
 use kube::runtime::reflector::Lookup;
 use kube::runtime::watcher::Config;
 use kube::{Api, client::Client, runtime::Controller, runtime::controller::Action};
+use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::time::Duration;
@@ -113,7 +114,7 @@ async fn reconcile(
                 volume_mounts.clone(),
                 targets,
                 node_backup.spec.repository.clone(),
-                name.clone(),
+                node_backup.spec.node.clone(),
             );
 
             create_secret(
@@ -140,7 +141,7 @@ async fn reconcile(
             volumes.push(vol);
             volume_mounts.push(mount);
 
-            let cjob = BackupCronJob::create_cronjob(
+            let mut cjob = BackupCronJob::create_cronjob(
                 BackupCronJob::node_cronjob_name(&name),
                 &name,
                 &namespace,
@@ -151,6 +152,25 @@ async fn reconcile(
                     schedule: node_backup.spec.schedule.clone(),
                 },
             );
+
+            let mut node_select = BTreeMap::new();
+            node_select.insert(
+                "kubernetes.io/hostname".to_string(),
+                node_backup.spec.node.clone(),
+            );
+
+            cjob.spec
+                .as_mut()
+                .unwrap()
+                .job_template
+                .spec
+                .as_mut()
+                .unwrap()
+                .template
+                .spec
+                .as_mut()
+                .unwrap()
+                .node_selector = Some(node_select);
 
             create_or_update_cron(client.clone(), &namespace, &name, cjob).await?;
 
