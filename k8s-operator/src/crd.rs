@@ -57,6 +57,8 @@ pub struct NodeBackupSpec {
     /// Source paths to backup
     pub paths: Vec<String>,
     /// Cron schedule for the backup
+    /// Excludes
+    pub exclude: Option<Vec<String>>,
     pub schedule: String,
     /// Which node the backup runs on
     pub node: String,
@@ -64,4 +66,6 @@ pub struct NodeBackupSpec {
     pub quiet: Option<bool>,
     /// Create a cephFS snapshot before backup
     pub cephfs_snap: Option<bool>,
+    /// Keep changing paths the same
+    pub same_path: Option<bool>,
 }

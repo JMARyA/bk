@@ -131,6 +131,20 @@ async fn reconcile(
                 }
             }
 
+            if let Some(same_path) = node_backup.spec.same_path {
+                if same_path {
+                    conf.path
+                        .as_mut()
+                        .unwrap()
+                        .iter_mut()
+                        .for_each(|x| x.1.same_path = Some(true));
+                }
+            }
+
+            if let Some(excludes) = &node_backup.spec.exclude {
+                conf.restic.as_mut().unwrap().first_mut().unwrap().exclude = Some(excludes.clone());
+            }
+
             create_or_update_secret(
                 client.clone(),
                 &namespace,

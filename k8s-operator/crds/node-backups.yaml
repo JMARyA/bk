@@ -25,6 +25,12 @@ spec:
                 description: Create a cephFS snapshot before backup
                 nullable: true
                 type: boolean
+              exclude:
+                description: Cron schedule for the backup Excludes
+                items:
+                  type: string
+                nullable: true
+                type: array
               node:
                 description: Which node the backup runs on
                 type: string
@@ -40,8 +46,11 @@ spec:
               repository:
                 description: Target repository
                 type: string
+              same_path:
+                description: Keep changing paths the same
+                nullable: true
+                type: boolean
               schedule:
-                description: Cron schedule for the backup
                 type: string
             required:
             - node

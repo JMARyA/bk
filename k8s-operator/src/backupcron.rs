@@ -11,10 +11,14 @@ use k8s_openapi::api::batch::v1::CronJob;
 use k8s_openapi::api::batch::v1::CronJobSpec;
 use k8s_openapi::api::batch::v1::JobSpec;
 use k8s_openapi::api::batch::v1::JobTemplateSpec;
+use k8s_openapi::api::core::v1::Capabilities;
 use k8s_openapi::api::core::v1::Container;
 use k8s_openapi::api::core::v1::HostPathVolumeSource;
+use k8s_openapi::api::core::v1::PodSecurityContext;
 use k8s_openapi::api::core::v1::PodSpec;
 use k8s_openapi::api::core::v1::PodTemplateSpec;
+use k8s_openapi::api::core::v1::SeccompProfile;
+use k8s_openapi::api::core::v1::SecurityContext;
 use k8s_openapi::api::core::v1::Volume;
 use k8s_openapi::api::core::v1::VolumeMount;
 use kube::api::ObjectMeta;
@@ -228,7 +232,7 @@ impl BackupCronJob {
             if vol.name == "ssh-identity" {
                 continue;
             }
-            
+
             paths.insert(
                 vol.name.clone(),
                 bk::config::LocalPath {
@@ -242,6 +246,7 @@ impl BackupCronJob {
 
         let volume_tags: Vec<String> = volume_mounts
             .iter()
+            .filter(|x| x.name != "ssh-identity")
             .map(|x| format!("volume_{}", x.name))
             .collect();
 
@@ -315,6 +320,17 @@ impl BackupCronJob {
                                         "/etc/bk-config/bk.toml".to_string(),
                                     ]),
                                     volume_mounts: Some(volume_mounts),
+                                    security_context: Some(SecurityContext {
+                                        capabilities: Some(Capabilities {
+                                            add: vec!["SYS_ADMIN".to_string()].into(),
+                                            ..Default::default()
+                                        }),
+                                        seccomp_profile: Some(SeccompProfile {
+                                            type_: "Unconfined".to_string(),
+                                            ..Default::default()
+                                        }),
+                                        ..Default::default()
+                                    }),
                                     ..Default::default()
                                 }],
                                 restart_policy: Some("Never".to_string()),
