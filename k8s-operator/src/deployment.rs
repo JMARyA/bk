@@ -112,8 +112,7 @@ async fn reconcile(
                     &namespace,
                     {
                         let mut h = HashMap::new();
-                        h.insert("bk.toml".to_string(), toml::to_string(&conf).unwrap())
-                            .unwrap();
+                        h.insert("bk.toml".to_string(), toml::to_string(&conf).unwrap());
                         h
                     },
                     BackupCronJob::cronjob_secret_name(&name),
