@@ -12,6 +12,7 @@ use k8s_openapi::api::batch::v1::CronJobSpec;
 use k8s_openapi::api::batch::v1::JobSpec;
 use k8s_openapi::api::batch::v1::JobTemplateSpec;
 use k8s_openapi::api::core::v1::Container;
+use k8s_openapi::api::core::v1::HostPathVolumeSource;
 use k8s_openapi::api::core::v1::PodSpec;
 use k8s_openapi::api::core::v1::PodTemplateSpec;
 use k8s_openapi::api::core::v1::Volume;
@@ -19,6 +20,7 @@ use k8s_openapi::api::core::v1::VolumeMount;
 use kube::api::ObjectMeta;
 use kube::{Api, client::Client};
 
+use crate::crd::NodeBackup;
 use crate::crd::ResticRepository;
 use crate::secrets::create_secret;
 use crate::secrets::get_secret;
@@ -51,6 +53,29 @@ impl BkOptions {
 pub struct BackupCronJob {}
 
 impl BackupCronJob {
+    pub fn get_vols_of_nodebackup(nodebackup: &NodeBackup) -> (Vec<Volume>, Vec<VolumeMount>) {
+        let mut vol = Vec::new();
+        let mut volm = Vec::new();
+
+        for path in &nodebackup.spec.paths {
+            vol.push(Volume {
+                name: path.replace("/", "_"),
+                host_path: Some(HostPathVolumeSource {
+                    path: path.clone(),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            });
+            volm.push(VolumeMount {
+                name: path.replace("/", "_"),
+                mount_path: path.clone(),
+                ..Default::default()
+            });
+        }
+
+        (vol, volm)
+    }
+
     /// Extract the volumes from a `Deployment`
     pub fn get_vols_of_deployment(deployment: &Deployment) -> (Vec<Volume>, Vec<VolumeMount>) {
         let volumes = deployment
@@ -205,7 +230,16 @@ impl BackupCronJob {
         format!("bk-backup-secret-{name}")
     }
 
+    pub fn node_cronjob_name(name: &str) -> String {
+        format!("bk-nodebackup-{name}")
+    }
+
+    pub fn node_cronjob_secret_name(name: &str) -> String {
+        format!("bk-nodebackup-secret-{name}")
+    }
+
     pub fn create_cronjob(
+        cron_name: String,
         name: &str,
         ns: &str,
         volume_mounts: Vec<VolumeMount>,
@@ -214,7 +248,7 @@ impl BackupCronJob {
     ) -> CronJob {
         CronJob {
             metadata: ObjectMeta {
-                name: Some(Self::cronjob_name(name)),
+                name: Some(cron_name),
                 namespace: Some(ns.to_string()),
                 ..Default::default()
             },

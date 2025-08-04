@@ -7,6 +7,7 @@ mod backupcron;
 pub mod crd;
 mod deployment;
 mod finalizer;
+mod nodebackup;
 mod secrets;
 
 #[tokio::main]
@@ -25,9 +26,10 @@ async fn main() {
 
     let context: Arc<ContextData> = Arc::new(ContextData::new(client.clone()));
 
-    let deployment_controller = deployment::init_controller(client.clone(), context);
+    let deployment_controller = deployment::init_controller(client.clone(), context.clone());
+    let nodebackup_controller = nodebackup::init_controller(client.clone(), context.clone());
 
-    tokio::join!(deployment_controller);
+    tokio::join!(deployment_controller, nodebackup_controller);
 }
 
 pub struct ContextData {
@@ -65,19 +67,6 @@ fn determine_action<T: kube::Resource>(echo: &T) -> ResourceAction {
     } else {
         ResourceAction::NoOp
     }
-}
-
-/// Actions to be taken when a reconciliation fails - for whatever reason.
-/// Prints out the error to `stderr` and requeues the resource for another reconciliation after
-/// five seconds.
-///
-/// # Arguments
-/// - `echo`: The erroneous resource.
-/// - `error`: A reference to the `kube::Error` that occurred during reconciliation.
-/// - `_context`: Unused argument. Context Data "injected" automatically by kube-rs.
-fn on_error(echo: Arc<Deployment>, error: &Error, _context: Arc<ContextData>) -> Action {
-    log::error!("Reconciliation error:\n{:?}.\n{:?}", error, echo);
-    Action::requeue(Duration::from_secs(5))
 }
 
 /// All errors possible to occur during reconciliation

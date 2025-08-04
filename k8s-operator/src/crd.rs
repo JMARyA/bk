@@ -46,7 +46,7 @@ pub struct SecretKeyRef {
 )]
 pub struct NodeBackupSpec {
     pub repository: String,
-    pub path: String,
+    pub paths: Vec<String>,
     pub schedule: String,
-    pub node: Option<String>,
+    pub node: String,
 }
