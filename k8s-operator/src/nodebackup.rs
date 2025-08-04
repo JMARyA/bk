@@ -92,7 +92,7 @@ async fn reconcile(
 
             add_finalizer!(
                 client,
-                Deployment,
+                NodeBackup,
                 &node_backup.name().unwrap(),
                 &namespace,
                 "bk.jmarya.me"
@@ -211,7 +211,7 @@ async fn reconcile(
 
             delete_finalizer!(
                 client,
-                Deployment,
+                NodeBackup,
                 &node_backup.name().unwrap(),
                 &namespace,
                 "bk.jmarya.me"
