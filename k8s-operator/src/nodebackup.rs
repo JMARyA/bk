@@ -198,16 +198,14 @@ async fn reconcile(
                     &BackupCronJob::node_cronjob_name(&name),
                     &DeleteParams::default(),
                 )
-                .await
-                .unwrap();
+                .await;
 
             delete_secret(
                 client.clone(),
                 &namespace,
                 &BackupCronJob::node_cronjob_secret_name(&name),
             )
-            .await
-            .unwrap();
+            .await;
 
             delete_finalizer!(
                 client,
