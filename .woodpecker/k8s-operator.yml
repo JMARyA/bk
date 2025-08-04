@@ -6,7 +6,7 @@ steps:
   - name: build
     image: woodpeckerci/plugin-docker-buildx
     settings:
-      platforms: linux/amd64,linux/arm64
+      platforms: linux/amd64
       repo: git.hydrar.de/jmarya/bk-k8s
       registry: git.hydrar.de
       tags: latest
