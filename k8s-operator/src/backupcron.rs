@@ -58,7 +58,10 @@ pub struct BackupCronJob {}
 impl BackupCronJob {
     /// Transform a filesystem path into a valid name
     pub fn path_to_name(path: &str) -> String {
-        path.replace("/", "-").trim_start_matches("-").to_string()
+        path.replace("/", "-")
+            .trim_start_matches("-")
+            .to_lowercase()
+            .to_string()
     }
 
     /// Transform `NodeBackup` into `Volume`s and `VolumeMount`s
