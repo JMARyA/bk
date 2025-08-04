@@ -225,6 +225,10 @@ impl BackupCronJob {
         let mut paths = HashMap::new();
 
         for vol in &volume_mounts {
+            if vol.name == "ssh-identity" {
+                continue;
+            }
+            
             paths.insert(
                 vol.name.clone(),
                 bk::config::LocalPath {
