@@ -38,10 +38,10 @@ pub fn init_controller(
         .for_each(|reconciliation_result| async move {
             match reconciliation_result {
                 Ok(echo_resource) => {
-                    println!("Reconciliation successful. Resource: {:?}", echo_resource);
+                    log::info!("Reconciliation successful. Resource: {:?}", echo_resource);
                 }
                 Err(reconciliation_err) => {
-                    eprintln!("Reconciliation error: {:?}", reconciliation_err)
+                    log::error!("Reconciliation error: {:?}", reconciliation_err)
                 }
             }
         })
@@ -72,16 +72,13 @@ async fn reconcile(
                 return Ok(Action::await_change());
             }
 
-            println!("Found deployment {name} in {namespace}");
+            log::info!("Found deployment {name} in {namespace}");
 
             // Handle if bk options are set on the deployment
             if let Some(options) =
                 BkOptions::parse(deployment.metadata.annotations.as_ref().unwrap())
             {
-                println!(
-                    "Creating Backup Cron for {}",
-                    deployment.metadata.name.as_ref().unwrap()
-                );
+                log::info!("Creating Backup Cron for deploymnt {name}");
 
                 add_finalizer!(
                     client,
@@ -147,7 +144,7 @@ async fn reconcile(
             Ok(Action::requeue(Duration::from_secs(60)))
         }
         ResourceAction::Delete => {
-            println!("Deleting Backup Cron for deployment {name}");
+            log::info!("Deleting Backup Cron for deployment {name}");
 
             let cronjobs: Api<CronJob> = Api::namespaced(client.clone(), &namespace);
             cronjobs
@@ -192,7 +189,7 @@ pub async fn create_or_update_cron(
 
     match cronjobs.create(&PostParams::default(), &cjob).await {
         Ok(_) => {
-            println!("Created CronJob for {name}",);
+            log::info!("Created CronJob for {name}",);
         }
         Err(kube::Error::Api(e)) if e.code == 409 => {
             // Already exists, do an update instead
@@ -202,7 +199,7 @@ pub async fn create_or_update_cron(
             // You decide how much to update — possibly update .spec only
             updated.spec = cjob.spec.clone();
 
-            println!("Updating CronJob {}", cjob.name().unwrap());
+            log::info!("Updating CronJob {}", cjob.name().unwrap());
             cronjobs
                 .replace(&cjob.name().unwrap(), &PostParams::default(), &updated)
                 .await?;

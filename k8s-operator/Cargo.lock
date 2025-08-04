@@ -214,9 +214,11 @@ name = "bk-k8s"
 version = "0.1.0"
 dependencies = [
  "bk",
+ "env_logger",
  "futures",
  "k8s-openapi",
  "kube",
+ "log",
  "schemars",
  "serde",
  "serde_json",

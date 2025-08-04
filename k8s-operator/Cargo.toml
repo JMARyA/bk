@@ -22,6 +22,8 @@ schemars = "0.8"
 thiserror = "2"
 bk = { git = "https://git.hydrar.de/jmarya/bk" }
 toml = "0.9.4"
+env_logger = "0.11.8"
+log = "0.4.27"
 
 [build-dependencies]
 kube = { version = "1.0.0", default-features = true, features = [

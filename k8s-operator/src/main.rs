@@ -11,6 +11,14 @@ mod secrets;
 
 #[tokio::main]
 async fn main() {
+    if std::env::var("RUST_LOG").is_err() {
+        unsafe {
+            std::env::set_var("RUST_LOG", "info");
+        }
+    }
+
+    env_logger::init();
+
     let client: Client = Client::try_default()
         .await
         .expect("Expected a valid KUBECONFIG.");
@@ -68,7 +76,7 @@ fn determine_action<T: kube::Resource>(echo: &T) -> ResourceAction {
 /// - `error`: A reference to the `kube::Error` that occurred during reconciliation.
 /// - `_context`: Unused argument. Context Data "injected" automatically by kube-rs.
 fn on_error(echo: Arc<Deployment>, error: &Error, _context: Arc<ContextData>) -> Action {
-    eprintln!("Reconciliation error:\n{:?}.\n{:?}", error, echo);
+    log::error!("Reconciliation error:\n{:?}.\n{:?}", error, echo);
     Action::requeue(Duration::from_secs(5))
 }
 
