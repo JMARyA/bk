@@ -57,7 +57,9 @@ pub fn run_backup_rsync(conf: &RsyncConfig) {
     }
 }
 
-pub fn run_backup(conf: Config) {
+pub fn run_backup(conf: Config) -> i32 {
+    let mut state = 0;
+
     if let Some(script) = &conf.start_script {
         run_command(&["sh", script.as_str()], None);
     }
@@ -78,6 +80,7 @@ pub fn run_backup(conf: Config) {
 
             if let Err(e) = res {
                 log::error!("Backup to target {target} failed: {e}");
+                state = 1;
 
                 for ntfy_key in restic.ntfy.clone().unwrap_or_default() {
                     let ntfy_opt = notify_provider.get(&ntfy_key).unwrap();
@@ -104,6 +107,8 @@ pub fn run_backup(conf: Config) {
     if let Some(script) = &conf.end_script {
         run_command(&["sh", script.as_str()], None);
     }
+
+    return state;
 }
 
 pub fn now() -> String {

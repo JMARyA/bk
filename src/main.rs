@@ -11,7 +11,8 @@ fn main() {
 
     if let Some(conf) = args.get(1) {
         let conf = toml::from_str(&std::fs::read_to_string(conf).unwrap()).unwrap();
-        run_backup(conf);
+        let state = run_backup(conf);
+        std::process::exit(state);
     } else {
         println!("Usage: bk <config>");
     }
