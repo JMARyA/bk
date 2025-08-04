@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 
+use bk::config::Config;
 use bk::config::ResticConfig;
 use bk::config::ResticTarget;
 use bk::config::S3Creds;
@@ -146,13 +147,12 @@ impl BackupCronJob {
         h
     }
 
-    pub async fn new(client: Client, options: BkOptions, deployment: &Deployment) -> CronJob {
-        let ns = deployment.metadata.namespace.as_ref().unwrap().clone();
-        let name = deployment.metadata.name.as_ref().unwrap().clone();
-
-        let (mut volumes, mut volume_mounts) = Self::get_vols_of_deployment(deployment);
-
-        // setup bk.conf
+    pub fn build_bk_conf(
+        volume_mounts: Vec<VolumeMount>,
+        targets: HashMap<String, ResticTarget>,
+        target: String,
+        host: String,
+    ) -> Config {
         let mut paths = HashMap::new();
 
         for vol in &volume_mounts {
@@ -167,29 +167,19 @@ impl BackupCronJob {
             );
         }
 
-        let volume_tags: Vec<String> = volumes
+        let volume_tags: Vec<String> = volume_mounts
             .iter()
             .map(|x| format!("volume_{}", x.name))
             .collect();
 
-        // deployment: backup all volumes
-        let conf = bk::config::Config {
+        bk::config::Config {
             start_script: None,
             end_script: None,
             rsync: None,
             path: Some(paths.clone()),
-            restic_target: Some(
-                Self::get_remote_config(
-                    client.clone(),
-                    &ns,
-                    &options.repo,
-                    &mut volumes,
-                    &mut volume_mounts,
-                )
-                .await,
-            ),
+            restic_target: Some(targets),
             restic: Some(vec![ResticConfig {
-                targets: vec![options.repo.clone()],
+                targets: vec![target],
                 src: paths.keys().map(|x| x.to_string()).collect::<Vec<_>>(),
                 exclude: None,
                 exclude_caches: None,
@@ -201,36 +191,10 @@ impl BackupCronJob {
                 compression: None,
                 ntfy: None,
                 quiet: None,
-                host: Some(name.clone()),
+                host: Some(host),
             }]),
             ntfy: None,
-        };
-
-        create_secret(
-            client.clone(),
-            &ns,
-            {
-                let mut h = HashMap::new();
-                h.insert("bk.toml".to_string(), toml::to_string(&conf).unwrap())
-                    .unwrap();
-                h
-            },
-            Self::cronjob_secret_name(&name),
-        )
-        .await
-        .unwrap();
-
-        // add config secret to volumes
-        let (vol, mount) = mount_secret_file(
-            "bk-config".to_string(),
-            Self::cronjob_secret_name(&name),
-            "bk.toml".to_string(),
-            "/etc/bk-config".to_string(),
-        );
-        volumes.push(vol);
-        volume_mounts.push(mount);
-
-        return Self::create_cronjob(&name, &ns, volume_mounts, volumes, options);
+        }
     }
 
     pub fn cronjob_name(name: &str) -> String {
