@@ -1,0 +1,88 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: restic-repositories.bk.jmarya.me
+spec:
+  group: bk.jmarya.me
+  names:
+    categories: []
+    kind: ResticRepository
+    plural: restic-repositories
+    shortNames: []
+    singular: resticrepository
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns: []
+    name: v1
+    schema:
+      openAPIV3Schema:
+        description: Auto-generated derived type for ResticRepositorySpec via `CustomResource`
+        properties:
+          spec:
+            properties:
+              endpoint:
+                type: string
+              passphrase:
+                properties:
+                  secretKey:
+                    type: string
+                  secretName:
+                    type: string
+                required:
+                - secretKey
+                - secretName
+                type: object
+              s3:
+                nullable: true
+                properties:
+                  access_key:
+                    properties:
+                      secretKey:
+                        type: string
+                      secretName:
+                        type: string
+                    required:
+                    - secretKey
+                    - secretName
+                    type: object
+                  secret_key:
+                    properties:
+                      secretKey:
+                        type: string
+                      secretName:
+                        type: string
+                    required:
+                    - secretKey
+                    - secretName
+                    type: object
+                required:
+                - access_key
+                - secret_key
+                type: object
+              ssh:
+                nullable: true
+                properties:
+                  secret_key:
+                    properties:
+                      secretKey:
+                        type: string
+                      secretName:
+                        type: string
+                    required:
+                    - secretKey
+                    - secretName
+                    type: object
+                required:
+                - secret_key
+                type: object
+            required:
+            - endpoint
+            - passphrase
+            type: object
+        required:
+        - spec
+        title: ResticRepository
+        type: object
+    served: true
+    storage: true
+    subresources: {}

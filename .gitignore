@@ -1,4 +1,3 @@
 /target
 /k8s-operator/target
-/k8s-operator/crds
 /k8s-operator/cluster-test
