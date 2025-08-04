@@ -105,6 +105,7 @@ pub fn create_archive(
 
         if conf.quiet.unwrap_or_default() {
             cmd.push("--quiet");
+            cmd.push("--json");
         }
 
         if let Some(host) = &conf.host {
