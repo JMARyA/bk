@@ -17,6 +17,32 @@ pub async fn get_secret(
     ns: &str,
     reference: SecretKeyRef,
 ) -> Result<String, kube::Error> {
+    if let Ok(data) = get_secret_data(client.clone(), ns, reference.clone()).await {
+        return Ok(data);
+    }
+
+    get_secret_stringdata(client.clone(), ns, reference).await
+}
+
+pub async fn get_secret_stringdata(
+    client: Client,
+    ns: &str,
+    reference: SecretKeyRef,
+) -> Result<String, kube::Error> {
+    let secrets: Api<Secret> = Api::namespaced(client, &ns);
+    let secret = secrets.get(&reference.secretName).await?;
+
+    let secret_string_data = secret.string_data.unwrap();
+    let value = secret_string_data.get(&reference.secretKey).unwrap();
+
+    Ok(value.clone())
+}
+
+pub async fn get_secret_data(
+    client: Client,
+    ns: &str,
+    reference: SecretKeyRef,
+) -> Result<String, kube::Error> {
     let secrets: Api<Secret> = Api::namespaced(client, &ns);
     let secret = secrets.get(&reference.secretName).await?;
 
