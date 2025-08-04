@@ -12,15 +12,19 @@ use std::collections::HashMap;
 use crate::crd::SecretKeyRef;
 
 /// Get the value of a `SecretKeyRef` within namespace `ns`
-pub async fn get_secret(client: Client, ns: &str, reference: SecretKeyRef) -> String {
+pub async fn get_secret(
+    client: Client,
+    ns: &str,
+    reference: SecretKeyRef,
+) -> Result<String, kube::Error> {
     let secrets: Api<Secret> = Api::namespaced(client, &ns);
-    let secret = secrets.get(&reference.secretName).await.unwrap();
+    let secret = secrets.get(&reference.secretName).await?;
 
     let secret_string_data = secret.data.unwrap();
     let value = secret_string_data.get(&reference.secretKey).unwrap();
 
     let value = String::from_utf8(value.0.clone()).unwrap();
-    value
+    Ok(value)
 }
 
 /// Generate the `Volume` and `VolumeMount` to mount a secret
@@ -56,38 +60,6 @@ pub fn mount_secret_file(
     )
 }
 
-pub async fn create_secret(
-    client: Client,
-    ns: &str,
-    data: HashMap<String, String>,
-    name: String,
-) -> Result<Secret, kube::Error> {
-    let secrets: Api<Secret> = Api::namespaced(client, &ns);
-
-    let mut btree_data: BTreeMap<String, String> = BTreeMap::new();
-
-    for (key, val) in data {
-        btree_data.insert(key, val).unwrap();
-    }
-
-    let secret = Secret {
-        metadata: kube::api::ObjectMeta {
-            name: Some(name),
-            ..Default::default()
-        },
-        string_data: Some(
-            btree_data
-                .iter()
-                .map(|(k, v)| (k.clone(), v.clone()))
-                .collect(),
-        ),
-        type_: Some("Opaque".to_string()),
-        ..Default::default()
-    };
-
-    secrets.create(&PostParams::default(), &secret).await
-}
-
 pub async fn delete_secret(client: Client, ns: &str, name: &str) -> Result<(), kube::Error> {
     let secrets: Api<Secret> = Api::namespaced(client.clone(), ns);
     if let Err(e) = secrets.delete(&name, &DeleteParams::default()).await {
@@ -95,4 +67,49 @@ pub async fn delete_secret(client: Client, ns: &str, name: &str) -> Result<(), k
     }
 
     Ok(())
+}
+
+pub async fn create_or_update_secret(
+    client: Client,
+    ns: &str,
+    data: HashMap<String, String>,
+    name: String,
+) -> Result<Secret, kube::Error> {
+    let secrets: Api<Secret> = Api::namespaced(client, ns);
+
+    // Convert HashMap to BTreeMap
+    let mut btree_data: BTreeMap<String, String> = BTreeMap::new();
+    for (key, val) in data {
+        btree_data.insert(key, val);
+    }
+
+    let secret = Secret {
+        metadata: kube::api::ObjectMeta {
+            name: Some(name.clone()),
+            ..Default::default()
+        },
+        string_data: Some(btree_data.clone()),
+        type_: Some("Opaque".to_string()),
+        ..Default::default()
+    };
+
+    match secrets.create(&PostParams::default(), &secret).await {
+        Ok(s) => Ok(s),
+        Err(kube::Error::Api(ae)) if ae.code == 409 => {
+            // Secret already exists, so replace it
+            let replaced_secret = Secret {
+                metadata: kube::api::ObjectMeta {
+                    name: Some(name.clone()),
+                    ..Default::default()
+                },
+                string_data: Some(btree_data),
+                type_: Some("Opaque".to_string()),
+                ..Default::default()
+            };
+            secrets
+                .replace(&name, &PostParams::default(), &replaced_secret)
+                .await
+        }
+        Err(e) => Err(e),
+    }
 }

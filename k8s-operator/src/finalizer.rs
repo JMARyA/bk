@@ -33,7 +33,7 @@ macro_rules! add_finalizer {
         });
 
         let patch: Patch<&Value> = Patch::Merge(&finalizer);
-        api.patch($name, &PatchParams::default(), &patch).await
+        api.patch($name, &PatchParams::default(), &patch).await?;
     }};
 }
 

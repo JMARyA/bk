@@ -19,7 +19,7 @@ use crate::backupcron::BackupCronJob;
 use crate::backupcron::BkOptions;
 use crate::delete_finalizer;
 use crate::determine_action;
-use crate::secrets::create_secret;
+use crate::secrets::create_or_update_secret;
 use crate::secrets::delete_secret;
 
 use crate::ContextData;
@@ -98,7 +98,8 @@ async fn reconcile(
                     &mut volumes,
                     &mut volume_mounts,
                 )
-                .await;
+                .await?;
+
                 let conf = BackupCronJob::build_bk_conf(
                     volume_mounts.clone(),
                     targets,
@@ -106,7 +107,7 @@ async fn reconcile(
                     name.clone(),
                 );
 
-                create_secret(
+                create_or_update_secret(
                     client.clone(),
                     &namespace,
                     {
@@ -117,8 +118,7 @@ async fn reconcile(
                     },
                     BackupCronJob::cronjob_secret_name(&name),
                 )
-                .await
-                .unwrap();
+                .await?;
 
                 // add config secret to volumes
                 let (vol, mount) = mount_secret_file(

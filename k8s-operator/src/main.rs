@@ -1,7 +1,5 @@
-use k8s_openapi::api::apps::v1::Deployment;
-use kube::{client::Client, runtime::controller::Action};
+use kube::client::Client;
 use std::sync::Arc;
-use tokio::time::Duration;
 
 mod backupcron;
 pub mod crd;

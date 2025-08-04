@@ -22,16 +22,19 @@ use kube::{Api, client::Client};
 
 use crate::crd::NodeBackup;
 use crate::crd::ResticRepository;
-use crate::secrets::create_secret;
 use crate::secrets::get_secret;
 use crate::secrets::mount_secret_file;
 
+/// Options for bk cron
 pub struct BkOptions {
+    /// repository
     pub repo: String,
+    /// cron schedule
     pub schedule: String,
 }
 
 impl BkOptions {
+    /// Parse `BkOptions` from the annotations of a resource
     pub fn parse(annotations: &BTreeMap<String, String>) -> Option<Self> {
         let annotations: serde_json::Value = serde_json::from_str(
             annotations.get("kubectl.kubernetes.io/last-applied-configuration")?,
@@ -53,10 +56,14 @@ impl BkOptions {
 pub struct BackupCronJob {}
 
 impl BackupCronJob {
+    /// Transform a filesystem path into a valid name
     pub fn path_to_name(path: &str) -> String {
         path.replace("/", "-").trim_start_matches("-").to_string()
     }
 
+    /// Transform `NodeBackup` into `Volume`s and `VolumeMount`s
+    ///
+    /// This goes through the paths in `NodeBackup` and generates respective Volume entries via hostPath.
     pub fn get_vols_of_nodebackup(nodebackup: &NodeBackup) -> (Vec<Volume>, Vec<VolumeMount>) {
         let mut vol = Vec::new();
         let mut volm = Vec::new();
@@ -81,7 +88,11 @@ impl BackupCronJob {
     }
 
     /// Extract the volumes from a `Deployment`
+    ///
+    /// It will only extract `hostPath` and `PersistentVolumeClaim` Volumes.
     pub fn get_vols_of_deployment(deployment: &Deployment) -> (Vec<Volume>, Vec<VolumeMount>) {
+        // TODO : handle multiple containers in pod; currently only first one is sourced
+
         let volumes = deployment
             .spec
             .as_ref()
@@ -124,18 +135,32 @@ impl BackupCronJob {
         (volumes, volume_mounts)
     }
 
+    /// Get the remote config (restic target config) from the environment.
+    ///
+    /// This will try to load a `ResticRepository` named `repo_name` in the namespace `ns`.
+    /// Additionally it modifies the volumes to include an SSH key secret mount if needed.
     pub async fn get_remote_config(
         client: Client,
         ns: &str,
         repo_name: &str,
         volumes: &mut Vec<Volume>,
         volume_mounts: &mut Vec<VolumeMount>,
-    ) -> HashMap<String, ResticTarget> {
+    ) -> Result<HashMap<String, ResticTarget>, crate::Error> {
         let backends: Api<ResticRepository> = Api::namespaced(client.clone(), &ns);
 
-        let backend = backends.get(&repo_name).await.unwrap();
+        let backend = backends.get(&repo_name).await.map_err(|_| {
+            crate::Error::UserInputError(format!(
+                "Restic repository {repo_name} could not be sourced. Does it exist?"
+            ))
+        })?;
 
-        let repo_key = get_secret(client.clone(), &ns, backend.spec.passphrase).await;
+        let repo_key = get_secret(client.clone(), &ns, backend.spec.passphrase)
+            .await
+            .map_err(|_| {
+                crate::Error::UserInputError(format!(
+                    "Could not get passphrase secret for repository {repo_name}"
+                ))
+            })?;
 
         if let Some(ssh) = &backend.spec.ssh {
             let (vol, mount) = mount_secret_file(
@@ -156,8 +181,20 @@ impl BackupCronJob {
                 repo: backend.spec.endpoint,
                 s3: if let Some(s3) = backend.spec.s3 {
                     Some(S3Creds {
-                        access_key: get_secret(client.clone(), &ns, s3.access_key).await,
-                        secret_key: get_secret(client.clone(), &ns, s3.secret_key).await,
+                        access_key: get_secret(client.clone(), &ns, s3.access_key)
+                            .await
+                            .map_err(|_| {
+                                crate::Error::UserInputError(format!(
+                                    "Could not get S3 access key secret for repository {repo_name}"
+                                ))
+                            })?,
+                        secret_key: get_secret(client.clone(), &ns, s3.secret_key)
+                            .await
+                            .map_err(|_| {
+                                crate::Error::UserInputError(format!(
+                                    "Could not get S3 secret key secret for repository {repo_name}"
+                                ))
+                            })?,
                     })
                 } else {
                     None
@@ -173,7 +210,7 @@ impl BackupCronJob {
                 passphrase: repo_key.to_string(),
             },
         );
-        h
+        Ok(h)
     }
 
     pub fn build_bk_conf(

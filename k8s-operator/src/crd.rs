@@ -30,6 +30,7 @@ pub struct SSHConfig {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone, JsonSchema)]
+#[allow(non_snake_case)]
 pub struct SecretKeyRef {
     pub secretName: String,
     pub secretKey: String,
