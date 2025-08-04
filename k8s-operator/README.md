@@ -1,5 +1,15 @@
 # BK Operator
 
+## Install
+To install the bk operator, apply the `CRD`s first and then the operator manifests:
+
+```sh
+kubectl apply -f ./crds
+kubectl apply -f ./manifests
+```
+
+This will install bk into the `bk-system` namespace.
+
 ## Backing up Pods
 - Volumes
 - Config?
