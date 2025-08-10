@@ -7,6 +7,7 @@ use bk::config::ResticTarget;
 use bk::config::S3Creds;
 use bk::config::SSHOptions;
 use k8s_openapi::api::apps::v1::Deployment;
+use k8s_openapi::api::apps::v1::StatefulSet;
 use k8s_openapi::api::batch::v1::CronJob;
 use k8s_openapi::api::batch::v1::CronJobSpec;
 use k8s_openapi::api::batch::v1::JobSpec;
@@ -98,27 +99,36 @@ impl BackupCronJob {
     ///
     /// It will only extract `hostPath` and `PersistentVolumeClaim` Volumes.
     pub fn get_vols_of_deployment(deployment: &Deployment) -> (Vec<Volume>, Vec<VolumeMount>) {
+        Self::extract_vols_of_podspec(
+            deployment
+                .spec
+                .as_ref()
+                .unwrap()
+                .template
+                .spec
+                .as_ref()
+                .unwrap(),
+        )
+    }
+
+    pub fn get_vols_of_statefulset(statefulset: &StatefulSet) -> (Vec<Volume>, Vec<VolumeMount>) {
+        Self::extract_vols_of_podspec(
+            statefulset
+                .spec
+                .as_ref()
+                .unwrap()
+                .template
+                .spec
+                .as_ref()
+                .unwrap(),
+        )
+    }
+
+    pub fn extract_vols_of_podspec(pod: &PodSpec) -> (Vec<Volume>, Vec<VolumeMount>) {
         // TODO : handle multiple containers in pod; currently only first one is sourced
 
-        let volumes = deployment
-            .spec
-            .as_ref()
-            .unwrap()
-            .template
-            .spec
-            .as_ref()
-            .unwrap()
-            .volumes
-            .clone()
-            .unwrap();
-        let volume_mounts = deployment
-            .spec
-            .as_ref()
-            .unwrap()
-            .template
-            .spec
-            .as_ref()
-            .unwrap()
+        let volumes = pod.volumes.clone().unwrap();
+        let volume_mounts = pod
             .containers
             .first()
             .as_ref()

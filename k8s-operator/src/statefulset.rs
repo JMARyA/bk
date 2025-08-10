@@ -1,7 +1,7 @@
-// This file contains the reconcile definitions for the Deployment kind.
+// This file contains the reconcile definitions for the StatefulSet kind.
 
 use futures::stream::StreamExt;
-use k8s_openapi::api::apps::v1::Deployment;
+use k8s_openapi::api::apps::v1::StatefulSet;
 use k8s_openapi::api::batch::v1::CronJob;
 use kube::Resource;
 use kube::ResourceExt;
@@ -31,9 +31,9 @@ pub fn init_controller(
     client: Client,
     context: Arc<ContextData>,
 ) -> impl std::future::Future<Output = ()> {
-    let deployments: Api<Deployment> = Api::all(client.clone());
+    let StatefulSets: Api<StatefulSet> = Api::all(client.clone());
 
-    Controller::new(deployments.clone(), Config::default())
+    Controller::new(StatefulSets.clone(), Config::default())
         .run(reconcile, on_error, context)
         .for_each(|reconciliation_result| async move {
             match reconciliation_result {
@@ -48,12 +48,12 @@ pub fn init_controller(
 }
 
 async fn reconcile(
-    deployment: Arc<Deployment>,
+    StatefulSet: Arc<StatefulSet>,
     context: Arc<ContextData>,
 ) -> Result<Action, Error> {
     let client: Client = context.client.clone();
 
-    let namespace: String = match Lookup::namespace(&*deployment) {
+    let namespace: String = match Lookup::namespace(&*StatefulSet) {
         None => {
             return Err(Error::UserInputError(
                 "Expected BackupDefinition resource to be namespaced. Can't deploy to an unknown namespace."
@@ -62,34 +62,34 @@ async fn reconcile(
         }
         Some(namespace) => namespace.to_string(),
     };
-    let name = deployment.name_any();
+    let name = StatefulSet.name_any();
 
     // Performs action as decided by the `determine_action` function.
-    match determine_action(&*deployment) {
+    match determine_action(&*StatefulSet) {
         ResourceAction::Create => {
             // Skip system namespaces
             if namespace.ends_with("system") {
                 return Ok(Action::await_change());
             }
 
-            log::info!("Found deployment {name} in {namespace}");
+            log::info!("Found StatefulSet {name} in {namespace}");
 
-            // Handle if bk options are set on the deployment
+            // Handle if bk options are set on the StatefulSet
             if let Some(options) =
-                BkOptions::parse(deployment.metadata.annotations.as_ref().unwrap())
+                BkOptions::parse(StatefulSet.metadata.annotations.as_ref().unwrap())
             {
-                log::info!("Creating Backup Cron for Deployment {name}");
+                log::info!("Creating Backup Cron for StatefulSet {name}");
 
                 add_finalizer!(
                     client,
-                    Deployment,
-                    &deployment.name().unwrap(),
+                    StatefulSet,
+                    &StatefulSet.name().unwrap(),
                     &namespace,
                     "bk.jmarya.me"
                 );
 
                 let (mut volumes, mut volume_mounts) =
-                    BackupCronJob::get_vols_of_deployment(&deployment);
+                    BackupCronJob::get_vols_of_statefulset(&StatefulSet);
 
                 let targets = BackupCronJob::get_remote_config(
                     client.clone(),
@@ -144,7 +144,7 @@ async fn reconcile(
             Ok(Action::requeue(Duration::from_secs(60)))
         }
         ResourceAction::Delete => {
-            log::info!("Deleting Backup Cron for deployment {name}");
+            log::info!("Deleting Backup Cron for StatefulSet {name}");
 
             let cronjobs: Api<CronJob> = Api::namespaced(client.clone(), &namespace);
             cronjobs
@@ -165,8 +165,8 @@ async fn reconcile(
 
             delete_finalizer!(
                 client,
-                Deployment,
-                &deployment.name().unwrap(),
+                StatefulSet,
+                &StatefulSet.name().unwrap(),
                 &namespace,
                 "bk.jmarya.me"
             )
@@ -187,7 +187,7 @@ async fn reconcile(
 /// - `echo`: The erroneous resource.
 /// - `error`: A reference to the `kube::Error` that occurred during reconciliation.
 /// - `_context`: Unused argument. Context Data "injected" automatically by kube-rs.
-fn on_error(echo: Arc<Deployment>, error: &Error, _context: Arc<ContextData>) -> Action {
+fn on_error(echo: Arc<StatefulSet>, error: &Error, _context: Arc<ContextData>) -> Action {
     log::error!("Reconciliation error:\n{:?}.\n{:?}", error, echo);
     Action::requeue(Duration::from_secs(5))
 }

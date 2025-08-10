@@ -7,6 +7,7 @@ mod deployment;
 mod finalizer;
 mod nodebackup;
 mod secrets;
+mod statefulset;
 
 #[tokio::main]
 async fn main() {
@@ -25,9 +26,14 @@ async fn main() {
     let context: Arc<ContextData> = Arc::new(ContextData::new(client.clone()));
 
     let deployment_controller = deployment::init_controller(client.clone(), context.clone());
+    let statefulset_controller = statefulset::init_controller(client.clone(), context.clone());
     let nodebackup_controller = nodebackup::init_controller(client.clone(), context.clone());
 
-    tokio::join!(deployment_controller, nodebackup_controller);
+    tokio::join!(
+        deployment_controller,
+        statefulset_controller,
+        nodebackup_controller
+    );
 }
 
 pub struct ContextData {
