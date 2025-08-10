@@ -152,8 +152,7 @@ async fn reconcile(
                     &BackupCronJob::cronjob_name(&name),
                     &DeleteParams::default(),
                 )
-                .await
-                .unwrap();
+                .await;
 
             delete_secret(
                 client.clone(),
