@@ -105,6 +105,7 @@ async fn reconcile(
                     targets,
                     options.repo.clone(),
                     name.clone(),
+                    options.exclude.clone(),
                 );
 
                 create_or_update_secret(

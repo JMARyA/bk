@@ -115,6 +115,7 @@ async fn reconcile(
                 targets,
                 node_backup.spec.repository.clone(),
                 node_backup.spec.node.clone(),
+                None,
             );
 
             if let Some(quiet) = node_backup.spec.quiet {
@@ -176,6 +177,7 @@ async fn reconcile(
                 BkOptions {
                     repo: node_backup.spec.repository.clone(),
                     schedule: node_backup.spec.schedule.clone(),
+                    exclude: None,
                 },
             );
 

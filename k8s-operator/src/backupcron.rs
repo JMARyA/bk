@@ -36,6 +36,8 @@ pub struct BkOptions {
     pub repo: String,
     /// cron schedule
     pub schedule: String,
+    /// comma seperated list of volumes to exclude
+    pub exclude: Option<Vec<String>>,
 }
 
 impl BkOptions {
@@ -51,9 +53,17 @@ impl BkOptions {
             .as_object()?
             .get("annotations")?
             .as_object()?;
+
+        let excludes = annotations.get("bk/exclude")?.as_str().map(|x| {
+            x.split(",")
+                .map(std::string::ToString::to_string)
+                .collect::<Vec<_>>()
+        });
+
         Some(Self {
             repo: annotations.get("bk/repository")?.as_str()?.to_string(),
             schedule: annotations.get("bk/schedule")?.as_str()?.to_string(),
+            exclude: excludes,
         })
     }
 }
@@ -235,12 +245,19 @@ impl BackupCronJob {
         targets: HashMap<String, ResticTarget>,
         target: String,
         host: String,
+        excludes: Option<Vec<String>>,
     ) -> Config {
         let mut paths = HashMap::new();
 
         for vol in &volume_mounts {
             if vol.name == "ssh-identity" {
                 continue;
+            }
+
+            if let Some(excludes) = &excludes {
+                if excludes.contains(&vol.name) {
+                    continue;
+                }
             }
 
             paths.insert(
