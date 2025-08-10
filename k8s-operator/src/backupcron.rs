@@ -273,7 +273,19 @@ impl BackupCronJob {
 
         let volume_tags: Vec<String> = volume_mounts
             .iter()
-            .filter(|x| x.name != "ssh-identity")
+            .filter(|x| {
+                if x.name == "ssh-identity" {
+                    return false;
+                }
+
+                if let Some(excludes) = &excludes {
+                    if excludes.contains(&x.name) {
+                        return false;
+                    }
+                }
+
+                return true;
+            })
             .map(|x| format!("volume_{}", x.name))
             .collect();
 
