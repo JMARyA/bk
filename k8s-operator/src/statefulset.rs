@@ -106,6 +106,7 @@ async fn reconcile(
                     options.repo.clone(),
                     name.clone(),
                     options.exclude.clone(),
+                    options.cephfs_snap.clone(),
                 );
 
                 create_or_update_secret(

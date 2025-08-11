@@ -116,6 +116,7 @@ async fn reconcile(
                 node_backup.spec.repository.clone(),
                 node_backup.spec.node.clone(),
                 None,
+                None,
             );
 
             if let Some(quiet) = node_backup.spec.quiet {
@@ -178,6 +179,7 @@ async fn reconcile(
                     repo: node_backup.spec.repository.clone(),
                     schedule: node_backup.spec.schedule.clone(),
                     exclude: None,
+                    cephfs_snap: None,
                 },
             );
 

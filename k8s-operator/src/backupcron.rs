@@ -38,6 +38,8 @@ pub struct BkOptions {
     pub schedule: String,
     /// comma seperated list of volumes to exclude
     pub exclude: Option<Vec<String>>,
+    /// cephfs snap + same path
+    pub cephfs_snap: Option<Vec<String>>,
 }
 
 impl BkOptions {
@@ -62,10 +64,19 @@ impl BkOptions {
             })
         });
 
+        let snaps = annotations.get("bk/cephfs_snap").and_then(|x| {
+            x.as_str().map(|x| {
+                x.split(",")
+                    .map(std::string::ToString::to_string)
+                    .collect::<Vec<_>>()
+            })
+        });
+
         Some(Self {
             repo: annotations.get("bk/repository")?.as_str()?.to_string(),
             schedule: annotations.get("bk/schedule")?.as_str()?.to_string(),
             exclude: excludes,
+            cephfs_snap: snaps,
         })
     }
 }
@@ -248,6 +259,7 @@ impl BackupCronJob {
         target: String,
         host: String,
         excludes: Option<Vec<String>>,
+        cephfs_snap: Option<Vec<String>>,
     ) -> Config {
         let mut paths = HashMap::new();
 
@@ -262,13 +274,18 @@ impl BackupCronJob {
                 }
             }
 
+            let is_snap = cephfs_snap
+                .as_ref()
+                .map(|x| x.contains(&vol.name))
+                .unwrap_or(false);
+
             paths.insert(
                 vol.name.clone(),
                 bk::config::LocalPath {
                     path: vol.mount_path.clone(),
                     ensure_exists: None,
-                    cephfs_snap: None,
-                    same_path: None,
+                    cephfs_snap: if is_snap { Some(true) } else { None },
+                    same_path: if is_snap { Some(true) } else { None },
                 },
             );
         }
