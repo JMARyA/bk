@@ -54,10 +54,12 @@ impl BkOptions {
             .get("annotations")?
             .as_object()?;
 
-        let excludes = annotations.get("bk/exclude")?.as_str().map(|x| {
-            x.split(",")
-                .map(std::string::ToString::to_string)
-                .collect::<Vec<_>>()
+        let excludes = annotations.get("bk/exclude").and_then(|x| {
+            x.as_str().map(|x| {
+                x.split(",")
+                    .map(std::string::ToString::to_string)
+                    .collect::<Vec<_>>()
+            })
         });
 
         Some(Self {
