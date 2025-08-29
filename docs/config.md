@@ -18,6 +18,13 @@ Run a script after executing backup tasks.
 end_script = "end.sh"
 ```
 
+### `delay`
+Wait a random delay before starting to backup. The value is the maximum wait time in seconds.
+
+```toml
+delay = 60 # randomized wait. 60 seconds max
+```
+
 ## Sections
 There are various module sections you can add to the config.
 

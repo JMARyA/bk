@@ -17,6 +17,9 @@ pub struct Config {
     /// Optional script to run after completing the backup process.
     pub end_script: Option<String>,
 
+    /// Optional Max Jitter Delay in seconds. Randomized wait time to evenly distribute backups if started via exact cron for example
+    pub delay: Option<u64>,
+
     // CDRs
     /// Local path inputs
     pub path: Option<HashMap<String, LocalPath>>,
