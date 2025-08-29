@@ -10,17 +10,21 @@ kubectl apply -f ./manifests
 
 This will install bk into the `bk-system` namespace.
 
+## CRDs
+
+### ResticRepository
+This CRD represents a restic repository as a backup target.
+
+### NodeBackup
+This CRD represents a scheduled backup of a nodes filesystem.
+
 ## Backing up Pods
-- Volumes
-- Config?
-- BackupCmd
+To backup the volumes of a pod, you have to annotate the respective `Deployment` / `Statefulset`.
 
-Annotate Deployment/StatefulSet -> CronJob -> Backup
+The following annotations are required and will create a backup `CronJob` once added:
+- `bk/repository`: The backup target. This is a reference to a `ResticRepository` within the same namespace.
+- `bk/schedule`: The cron schedule to run on.
 
-## Restore
-Restore a POD to previous version
-
-Restore -> Shutdown Deployment -> Start Job -> Restore -> Activate deployment
-
-## Cluster Sync?
-Keep restic snapshots in sync with the cluster for reference and DevUX with kubectl.
+Additional parameters include:
+- `bk/exclude`: Volumes to exclude, comma-seperated
+- `bk/cephfs_snap`: Try to create a cephfs snapshot on these volumes, comma-seperated
