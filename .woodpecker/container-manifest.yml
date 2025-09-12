@@ -6,7 +6,7 @@ depends_on:
 
 steps:
   merge-manifest:
-    image: quay.io/skopeo/stable
+    image: quay.io/buildah/stable
     environment:
       REGISTRY_URL: "git.hydrar.de"
       REGISTRY_USER: "jmarya"
@@ -15,10 +15,9 @@ steps:
       IMAGE_NAME: "bk"
       BASE_TAG: "latest"
     commands:
+      - buildah login -u "$REGISTRY_USER" -p "$REGISTRY_PASS" "$REGISTRY_URL"
       - export IMAGE_BASE="$REGISTRY_URL/$REGISTRY_USER/$IMAGE_NAME"
-      - echo "Merging manifests for $IMAGE_BASE:$BASE_TAG"
-      - skopeo manifest create "dir:manifest-$BASE_TAG"
-      - skopeo manifest add "dir:manifest-$BASE_TAG" "docker://$IMAGE_BASE:$BASE_TAG-amd64"
-      - skopeo manifest add "dir:manifest-$BASE_TAG" "docker://$IMAGE_BASE:$BASE_TAG-arm64"
-      - skopeo manifest push --dest-creds "$REGISTRY_USER:$REGISTRY_PASS" \
-          "dir:manifest-$BASE_TAG" "docker://$IMAGE_BASE:$BASE_TAG"
+      - buildah manifest create "$IMAGE_BASE:$BASE_TAG"
+      - buildah manifest add "$IMAGE_BASE:$BASE_TAG" "docker://$IMAGE_BASE:$BASE_TAG-amd64"
+      - buildah manifest add "$IMAGE_BASE:$BASE_TAG" "docker://$IMAGE_BASE:$BASE_TAG-arm64"
+      - buildah manifest push --all "$IMAGE_BASE:$BASE_TAG" "docker://$IMAGE_BASE:$BASE_TAG"
