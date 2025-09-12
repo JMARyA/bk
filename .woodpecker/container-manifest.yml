@@ -1,0 +1,24 @@
+when:
+  - event: push
+    branch: nix
+depends_on:
+  - container
+
+steps:
+  merge-manifest:
+    image: quay.io/skopeo/stable
+    environment:
+      REGISTRY_URL: "git.hydrar.de"
+      REGISTRY_USER: "jmarya"
+      REGISTRY_PASS:
+        from_secret: registry_token
+      IMAGE_NAME: "bk"
+      BASE_TAG: "latest"
+    commands:
+      - export IMAGE_BASE="$REGISTRY_URL/$REGISTRY_USER/$IMAGE_NAME"
+      - echo "Merging manifests for $IMAGE_BASE:$BASE_TAG"
+      - skopeo manifest create "dir:manifest-$BASE_TAG"
+      - skopeo manifest add "dir:manifest-$BASE_TAG" "docker://$IMAGE_BASE:$BASE_TAG-amd64"
+      - skopeo manifest add "dir:manifest-$BASE_TAG" "docker://$IMAGE_BASE:$BASE_TAG-arm64"
+      - skopeo manifest push --dest-creds "$REGISTRY_USER:$REGISTRY_PASS" \
+          "dir:manifest-$BASE_TAG" "docker://$IMAGE_BASE:$BASE_TAG"
