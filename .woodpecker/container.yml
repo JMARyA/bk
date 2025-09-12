@@ -8,7 +8,7 @@ labels:
 
 when:
   - event: push
-    branch: main
+    branch: nix
 
 steps:
   - name: "Build & Push Container"

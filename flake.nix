@@ -54,7 +54,7 @@
 
         dockerImage = pkgs.dockerTools.buildLayeredImage {
           name = "bk";
-          tag = "0.2.0-${pkgs.stdenv.hostPlatform.linuxArch}";
+          tag = "latest-${pkgs.stdenv.hostPlatform.linuxArch}";
           contents = [
             bk
             pkgs.restic
@@ -77,7 +77,7 @@
 
         bk-k8s-container = pkgs.dockerTools.buildLayeredImage {
           name = "bk-k8s";
-          tag = "0.2.0-${pkgs.stdenv.hostPlatform.linuxArch}";
+          tag = "latest-${pkgs.stdenv.hostPlatform.linuxArch}";
           contents = [ bk-k8s ];
           config = {
             Cmd = [ "/bin/bk-k8s" ];
