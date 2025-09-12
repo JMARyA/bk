@@ -28,6 +28,6 @@ steps:
       - "nix run nixpkgs#attic-client -- login default $BINARY_CACHE_URL $BINARY_CACHE_TOKEN"
       - "nix run nixpkgs#attic-client -- use $BINARY_CACHE_NAME"
       - "nix build .#containerImage"
-      - "nix run nixpkgs#attic-client -- push $BINARY_CACHE_NAME $(nix path-info .#default)"
+      - "nix run nixpkgs#attic-client -- push $BINARY_CACHE_NAME $(nix path-info --recursive --derivation .#default)"
       - "IMAGE_TAG=$(nix run nixpkgs#skopeo -- list-tags docker-archive:$(realpath result) | nix run nixpkgs#jq -- -r .Tags[0])"
-      - "nix run nixpkgs#skopeo -- copy docker-archive:$(realpath result) docker://$REGISTRY_URL/$REGISTRY_USER/$IMAGE_TAG --dest-creds $REGISTRY_USER:$REGISTRY_PASS"
+      - "nix run nixpkgs#skopeo -- --insecure-policy copy docker-archive:$(realpath result) docker://$REGISTRY_URL/$REGISTRY_USER/$IMAGE_TAG --dest-creds $REGISTRY_USER:$REGISTRY_PASS"
