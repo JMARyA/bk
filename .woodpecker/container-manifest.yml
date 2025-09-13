@@ -3,10 +3,12 @@ when:
     branch: nix
 depends_on:
   - container
+skip_clone: true
 
 steps:
   merge-manifest:
     image: quay.io/buildah/stable
+    privileged: true
     environment:
       REGISTRY_URL: "git.hydrar.de"
       REGISTRY_USER: "jmarya"
