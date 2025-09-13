@@ -1,17 +1,32 @@
+matrix:
+  platform:
+    - linux/amd64
+    - linux/arm64
+
+labels:
+  platform: ${platform}
+
 when:
   - event: push
-    branch: main
+    branch: nix
 
 steps:
-  - name: build
-    image: woodpeckerci/plugin-docker-buildx
-    settings:
-      platforms: linux/amd64
-      repo: git.hydrar.de/jmarya/bk-k8s
-      registry: git.hydrar.de
-      tags: latest
-      dockerfile: k8s-operator/Dockerfile
-      context: k8s-operator/
-      username: jmarya
-      password:
+  - name: "Build & Push Container"
+    image: nixos/nix:latest
+    environment:
+      BINARY_CACHE_URL: "https://attic.hydrar.de"
+      BINARY_CACHE_TOKEN:
+        from_secret: binary_cache_access_token
+      BINARY_CACHE_NAME: jmarya
+      REGISTRY_URL: "git.hydrar.de"
+      REGISTRY_USER: "jmarya"
+      REGISTRY_PASS:
         from_secret: registry_token
+    commands:
+      - "echo -e \"\nexperimental-features = nix-command flakes\" >> /etc/nix/nix.conf"
+      - "nix run nixpkgs#attic-client -- login default $BINARY_CACHE_URL $BINARY_CACHE_TOKEN"
+      - "nix run nixpkgs#attic-client -- use $BINARY_CACHE_NAME"
+      - "nix build .#bk-k8s-containerImage"
+      - "nix run nixpkgs#attic-client -- push $BINARY_CACHE_NAME $(nix path-info --recursive --derivation .#bk-k8s)"
+      - "IMAGE_TAG=$(nix run nixpkgs#skopeo -- list-tags docker-archive:$(realpath result) | nix run nixpkgs#jq -- -r .Tags[0])"
+      - "nix run nixpkgs#skopeo -- --insecure-policy copy docker-archive:$(realpath result) docker://$REGISTRY_URL/$REGISTRY_USER/$IMAGE_TAG --dest-creds $REGISTRY_USER:$REGISTRY_PASS"

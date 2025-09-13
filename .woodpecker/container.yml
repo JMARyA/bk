@@ -15,7 +15,6 @@ steps:
     image: nixos/nix:latest
     environment:
       BINARY_CACHE_URL: "https://attic.hydrar.de"
-      BINARY_CACHE_KEY: "jmarya:J1TbOhfJf5efnN9bqcffa25hQ0pGaiRCP5njs4tDgaM="
       BINARY_CACHE_TOKEN:
         from_secret: binary_cache_access_token
       BINARY_CACHE_NAME: jmarya
