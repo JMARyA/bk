@@ -20,7 +20,6 @@ steps:
       - buildah login -u "$REGISTRY_USER" -p "$REGISTRY_PASS" "$REGISTRY_URL"
       - export IMAGE_BASE="$REGISTRY_URL/$REGISTRY_USER/$IMAGE_NAME"
       - buildah manifest create "$IMAGE_BASE:$BASE_TAG"
-      - buildah manifest add "$IMAGE_BASE:$BASE_TAG" "docker://$IMAGE_BASE:$BASE_TAG-amd64"
+      - buildah manifest add "$IMAGE_BASE:$BASE_TAG" "docker://$IMAGE_BASE:$BASE_TAG-x86_64"
       - buildah manifest add "$IMAGE_BASE:$BASE_TAG" "docker://$IMAGE_BASE:$BASE_TAG-arm64"
       - buildah manifest push --all "$IMAGE_BASE:$BASE_TAG" "docker://$IMAGE_BASE:$BASE_TAG"
-
