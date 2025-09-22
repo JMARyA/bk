@@ -376,7 +376,7 @@ impl BackupCronJob {
                                     name: format!("backup-{name}"),
                                     image: Some("git.hydrar.de/jmarya/bk:latest".to_string()),
                                     command: Some(vec![
-                                        "/usr/bin/bk".to_string(),
+                                        "/bin/bk".to_string(),
                                         "/etc/bk-config/bk.toml".to_string(),
                                     ]),
                                     volume_mounts: Some(volume_mounts),
