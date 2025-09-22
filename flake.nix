@@ -65,7 +65,8 @@
             Cmd = [ "/bin/bk" ];
             WorkingDir = "/app";
           };
-          extraCommands = ''
+
+          fakeRootCommands = ''
             mkdir -p /usr
             ln -s /bin /usr/bin
             mkdir -p /root
@@ -73,6 +74,8 @@
             echo "root:x:0:0:root:/root:/bin/sh" > /etc/passwd
             echo "root:x:0:" > /etc/group
           '';
+
+          enableFakechroot = true;
         };
 
         bk-k8s = craneLib.buildPackage (
