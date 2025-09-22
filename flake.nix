@@ -65,6 +65,14 @@
             Cmd = [ "/bin/bk" ];
             WorkingDir = "/app";
           };
+          extraCommands = ''
+            mkdir -p /usr
+            ln -s /bin /usr/bin
+            mkdir -p /root
+            chmod 700 /root
+            echo "root:x:0:0:root:/root:/bin/sh" > /etc/passwd
+            echo "root:x:0:" > /etc/group
+          '';
         };
 
         bk-k8s = craneLib.buildPackage (
@@ -98,7 +106,6 @@
         apps.default = flake-utils.lib.mkApp {
           drv = bk;
         };
-        
 
         devShells.default = craneLib.devShell {
           # Inherit inputs from checks.
