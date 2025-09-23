@@ -68,6 +68,7 @@
 
           fakeRootCommands = ''
             mkdir -p /usr
+            mkdir -p /tmp
             ln -s /bin /usr/bin
             mkdir -p /root
             chmod 700 /root
