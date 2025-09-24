@@ -60,6 +60,9 @@
             pkgs.restic
             pkgs.rsync
             pkgs.openssh
+            pkgs.coreutils
+            pkgs.util-linux
+            pkgs.bash
           ];
           config = {
             Cmd = [ "/bin/bk" ];
