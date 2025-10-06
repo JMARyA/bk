@@ -12,6 +12,7 @@ name = "bk"
 path = "src/lib.rs"
 
 [dependencies]
+argh = "0.1.13"
 chrono = "0.4.39"
 env_logger = "0.11.8"
 log = "0.4.27"

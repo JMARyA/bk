@@ -2,6 +2,7 @@ use rand::Rng;
 use yansi::{Color, Paint};
 
 use crate::{
+    args::RunCommand,
     config::{Config, RsyncConfig},
     restic, run_command,
 };
@@ -58,9 +59,10 @@ pub fn run_backup_rsync(conf: &RsyncConfig) {
     }
 }
 
-pub fn run_backup(conf: Config) -> i32 {
+pub fn run_backup(args: RunCommand) -> i32 {
+    let conf = Config::from_path(&args.config);
     let mut state = 0;
-    
+
     if let Some(delay) = conf.delay {
         let wait = rand::random_range(0..delay);
         log::info!("Delaying backup for {wait} seconds...");
@@ -76,6 +78,15 @@ pub fn run_backup(conf: Config) -> i32 {
     }
 
     for restic in &conf.restic.unwrap_or_default() {
+        if !args.path.iter().any(|x| restic.src.contains(x)) && !args.path.is_empty() {
+            log::info!(
+                "Skipping restic operation due to path filter: want {:?}, got {:?}",
+                args.path,
+                restic.src
+            );
+            continue;
+        }
+
         let res = restic::create_archive(
             restic,
             conf.path.clone().unwrap_or_default(),
