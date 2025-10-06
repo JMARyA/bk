@@ -37,6 +37,12 @@ pub struct Config {
     pub ntfy: Option<HashMap<String, NtfyTarget>>,
 }
 
+impl Config {
+    pub fn from_path(path: &str) -> Self {
+        toml::from_str(&std::fs::read_to_string(path).unwrap()).unwrap()
+    }
+}
+
 /// Configuration for an individual rsync job.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct RsyncConfig {

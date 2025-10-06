@@ -1,4 +1,8 @@
-use bk::backup::run_backup;
+use bk::{
+    args::{BkArgs, RunCommand},
+    backup::run_backup,
+    config::Config,
+};
 
 // TODO : add basic ctrl+c support for ending bk tasks instead of everything and ensure cleanups
 
@@ -9,11 +13,30 @@ fn main() {
     env_logger::init();
     let args = std::env::args().collect::<Vec<_>>();
 
-    if let Some(conf) = args.get(1) {
-        let conf = toml::from_str(&std::fs::read_to_string(conf).unwrap()).unwrap();
-        let state = run_backup(conf);
-        std::process::exit(state);
+    if args.len() > 2 {
+        let args: BkArgs = argh::from_env();
+        match args.cmd {
+            bk::args::BkCommand::Show(show_command) => {
+                let conf = Config::from_path(&show_command.config);
+                // TODO : better representation
+                println!("{conf:#?}");
+            }
+            bk::args::BkCommand::Run(run_command) => {
+                let state = run_backup(run_command);
+                std::process::exit(state);
+            }
+        }
     } else {
-        println!("Usage: bk <config>");
+        let conf = args.get(1).unwrap();
+
+        if conf == "-h" || conf.to_lowercase() == "--help" {
+            let _: BkArgs = argh::from_env();
+        }
+
+        let state = run_backup(RunCommand {
+            config: conf.to_string(),
+            ..Default::default()
+        });
+        std::process::exit(state);
     }
 }

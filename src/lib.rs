@@ -1,5 +1,6 @@
 use yansi::{Color, Paint};
 
+pub mod args;
 pub mod backup;
 pub mod config;
 pub mod notify;
