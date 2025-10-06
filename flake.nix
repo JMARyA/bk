@@ -1,5 +1,5 @@
 {
-  description = "Build a cargo project without extra checks";
+  description = "Bk Backup Utility";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
@@ -81,24 +81,6 @@
 
           enableFakechroot = true;
         };
-
-        bk-k8s = craneLib.buildPackage (
-          commonArgs
-          // {
-            src = craneLib.cleanCargoSource ./k8s-operator;
-            cargoArtifacts = craneLib.buildDepsOnly commonArgs;
-          }
-        );
-
-        bk-k8s-container = pkgs.dockerTools.buildLayeredImage {
-          name = "bk-k8s";
-          tag = "latest-${pkgs.stdenv.hostPlatform.linuxArch}";
-          contents = [ bk-k8s ];
-          config = {
-            Cmd = [ "/bin/bk-k8s" ];
-            WorkingDir = "/app";
-          };
-        };
       in
       {
         checks = {
@@ -106,8 +88,6 @@
         };
 
         packages.default = bk;
-        packages.bk-k8s = bk-k8s;
-        packages.bk-k8s-containerImage = bk-k8s-container;
         packages.containerImage = dockerImage;
 
         apps.default = flake-utils.lib.mkApp {

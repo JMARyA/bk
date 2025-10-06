@@ -12,9 +12,15 @@ See [Configuration](./docs/config.md) for more details.
 You need at least one backup location.
 
 This can be either:
-- [Local Filesystem](#local-filesystem-target)
-- [SSH Remote](#ssh-remote-target)
-- [S3 Remote](#s3-remote-target)
+- [🍔 BK](#-bk)
+  - [Configuration](#configuration)
+  - [I want to backup](#i-want-to-backup)
+    - [Requirements](#requirements)
+      - [Local Filesystem Target](#local-filesystem-target)
+      - [SSH Remote Target](#ssh-remote-target)
+      - [S3 Remote Target](#s3-remote-target)
+    - [Local Machine](#local-machine)
+      - [Home Folder](#home-folder)
 
 #### Local Filesystem Target
 To use a local filesystem:
@@ -45,9 +51,6 @@ Host myhost
 
 #### S3 Remote Target
 #todo
-
-### Kubernetes
-To backup resources in kubernetes, see the [operator documentation](./k8s-operator/README.md).
 
 ### Local Machine
 #todo: docs
