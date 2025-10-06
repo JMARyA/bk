@@ -72,7 +72,10 @@ pub struct ResticTarget {
     pub ssh: Option<SSHOptions>,
 
     /// Optional passphrase for the repository.
-    pub passphrase: String,
+    pub passphrase: Option<String>,
+
+    /// Read passphrase from file
+    pub passphrase_file: Option<String>,
 }
 
 /// S3 Credentials

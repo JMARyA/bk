@@ -20,6 +20,9 @@ The URL to the repository. Can also be `sftp`.
 ### `passphrase`
 The passphrase for the repository.
 
+### `passphrase_file`
+Read the passphrase for the repository from a file
+
 ### `s3.access_key`
 optional auth key for s3
 

@@ -120,7 +120,19 @@ pub fn create_archive(
 
         let mut env = Vec::new();
 
-        env.push(("RESTIC_PASSWORD".to_string(), repo.passphrase.clone()));
+        if let Some(passphrase) = &repo.passphrase {
+            env.push(("RESTIC_PASSWORD".to_string(), passphrase.clone()));
+        } else if let Some(pass_file) = &repo.passphrase_file {
+            let passphrase =
+                std::fs::read_to_string(pass_file).expect("Could not read passphrase file");
+            env.push(("RESTIC_PASSWORD".to_string(), passphrase));
+        } else {
+            log::error!(
+                "Neither passphrase nor passphrase file provided for {}",
+                repo.repo
+            );
+            targets_results.insert(repo.repo.clone(), Err(ResticError::Fatal));
+        }
 
         if let Some(s3) = &repo.s3 {
             env.push(("AWS_ACCESS_KEY_ID".to_string(), s3.access_key.clone()));

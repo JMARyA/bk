@@ -1,4 +1,3 @@
-use rand::Rng;
 use yansi::{Color, Paint};
 
 use crate::{
@@ -60,7 +59,7 @@ pub fn run_backup_rsync(conf: &RsyncConfig) {
 
 pub fn run_backup(conf: Config) -> i32 {
     let mut state = 0;
-    
+
     if let Some(delay) = conf.delay {
         let wait = rand::random_range(0..delay);
         log::info!("Delaying backup for {wait} seconds...");
