@@ -39,6 +39,7 @@ These can be divided into the following categories:
 ### Operations
 - [Rsync](./config-rsync.md)
 - [Restic](./config-restic-backup.md)
+- [Restic Forget](./config-restic-forget.md)
 
 ### Notifications
 - [Notifications](./notifications.md)

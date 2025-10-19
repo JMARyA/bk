@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -9,7 +10,7 @@ use crate::{
 };
 
 /// Configuration structure for the backup system.
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct Config {
     /// Optional script to run before starting the backup process.
     pub start_script: Option<String>,
@@ -30,8 +31,11 @@ pub struct Config {
     /// Restic targets
     pub restic_target: Option<HashMap<String, ResticTarget>>,
 
-    /// Configuration for Borg backup jobs.
+    /// Configuration for restic backup jobs.
     pub restic: Option<Vec<ResticConfig>>,
+
+    /// Configuration for restic forget jobs
+    pub restic_forget: Option<Vec<ResticForget>>,
 
     /// Ntfy targets
     pub ntfy: Option<HashMap<String, NtfyTarget>>,
@@ -44,7 +48,7 @@ impl Config {
 }
 
 /// Configuration for an individual rsync job.
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct RsyncConfig {
     /// Source path for rsync.
     pub src: String,
@@ -66,7 +70,7 @@ pub struct RsyncConfig {
 }
 
 /// Configuration for a restic target.
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct ResticTarget {
     /// Restic repository URL.
     pub repo: String,
@@ -85,21 +89,21 @@ pub struct ResticTarget {
 }
 
 /// S3 Credentials
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct S3Creds {
     pub access_key: String,
     pub secret_key: String,
 }
 
 /// SSH Options
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct SSHOptions {
     pub port: Option<u16>,
     pub identity: String,
 }
 
 /// Configuration for an individual restic backup job.
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct ResticConfig {
     /// Notifications
     pub ntfy: Option<Vec<String>>,
@@ -140,11 +144,98 @@ pub struct ResticConfig {
     /// Host override
     pub host: Option<String>,
 }
+/// Configuration for an individual restic forget job.
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+pub struct ResticForget {
+    /// Notifications (e.g. ntfy topics to notify after job)
+    pub ntfy: Option<Vec<String>>,
+
+    /// Restic repository targets
+    pub targets: Vec<String>,
+
+    /// keep the last n snapshots (use "unlimited" to keep all)
+    pub keep_last: Option<u64>,
+
+    /// keep the last n hourly snapshots
+    pub keep_hourly: Option<u64>,
+
+    /// keep the last n daily snapshots
+    pub keep_daily: Option<u64>,
+
+    /// keep the last n weekly snapshots
+    pub keep_weekly: Option<u64>,
+
+    /// keep the last n monthly snapshots
+    pub keep_monthly: Option<u64>,
+
+    /// keep the last n yearly snapshots
+    pub keep_yearly: Option<u64>,
+
+    /// keep snapshots newer than this duration (e.g. "1y5m7d2h")
+    pub keep_within: Option<u64>,
+
+    /// keep hourly snapshots newer than this duration
+    pub keep_within_hourly: Option<u64>,
+
+    /// keep daily snapshots newer than this duration
+    pub keep_within_daily: Option<u64>,
+
+    /// keep weekly snapshots newer than this duration
+    pub keep_within_weekly: Option<u64>,
+
+    /// keep monthly snapshots newer than this duration
+    pub keep_within_monthly: Option<u64>,
+
+    /// keep yearly snapshots newer than this duration
+    pub keep_within_yearly: Option<u64>,
+
+    /// keep snapshots with these tags
+    pub keep_tag: Option<Vec<String>>,
+
+    /// allow deleting all snapshots of a snapshot group
+    pub unsafe_allow_remove_all: Option<bool>,
+
+    /// only consider snapshots for this host
+    pub host: Option<Vec<String>>,
+
+    /// only consider snapshots with these tags
+    pub tag: Option<Vec<String>>,
+
+    /// only consider snapshots including these paths
+    pub path: Option<Vec<String>>,
+
+    /// use compact output format
+    pub compact: Option<bool>,
+
+    /// group snapshots by host, paths, and/or tags (disable grouping with "")
+    pub group_by: Option<String>,
+
+    /// automatically run 'prune' if snapshots were removed
+    pub prune: Option<bool>,
+
+    /// tolerate this amount of unused data (default "5%")
+    pub max_unused: Option<String>,
+
+    /// stop after repacking this much data
+    pub max_repack_size: Option<String>,
+
+    /// only repack packs which are cacheable
+    pub repack_cacheable_only: Option<bool>,
+
+    /// repack pack files below 80% of target pack size
+    pub repack_small: Option<bool>,
+
+    /// repack all uncompressed data
+    pub repack_uncompressed: Option<bool>,
+
+    /// repack packfiles below this size
+    pub repack_smaller_than: Option<String>,
+}
 
 // INPUT
 
 /// Local path input
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct LocalPath {
     /// The local path
     pub path: String,
@@ -224,7 +315,7 @@ impl Drop for LocalPathRef {
 // Notification
 
 /// Ntfy configuration
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct NtfyTarget {
     pub ntfy: Option<NtfyConfiguration>,
 }
@@ -244,7 +335,7 @@ impl NtfyTarget {
 }
 
 /// Ntfy configuration
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct NtfyConfiguration {
     pub host: String,
     pub topic: String,
@@ -252,7 +343,7 @@ pub struct NtfyConfiguration {
 }
 
 /// Ntfy configuration
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct NtfyAuth {
     pub user: String,
     pub pass: String,

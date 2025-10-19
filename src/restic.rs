@@ -1,9 +1,9 @@
-use std::collections::HashMap;
+use std::{cell::RefCell, collections::HashMap};
 
 use yansi::{Color, Paint};
 
 use crate::{
-    config::{LocalPath, LocalPathRef, ResticConfig, ResticTarget},
+    config::{LocalPath, LocalPathRef, ResticConfig, ResticForget, ResticTarget},
     run_command,
 };
 
@@ -179,6 +179,269 @@ pub fn create_archive(
     }
 
     targets_results
+}
+
+pub fn forget_archive(
+    conf: &ResticForget,
+    target_provider: HashMap<String, ResticTarget>,
+    dry: bool,
+) -> HashMap<String, Result<(), ResticError>> {
+    let targets: Vec<_> = conf
+        .targets
+        .iter()
+        .map(|x| {
+            if let Some(pp) = target_provider.get(x) {
+                return pp;
+            } else {
+                log::error!("Unknown restic provider {x}");
+                std::process::exit(1);
+            }
+        })
+        .collect();
+
+    let mut targets_results = HashMap::new();
+
+    for repo in targets {
+        log::info!(
+            "Running backup forget for {}",
+            repo.repo.paint(Color::Yellow)
+        );
+
+        let mut cmd = vec!["restic", "forget"];
+
+        if conf.compact.unwrap_or_default() {
+            cmd.push("--compact");
+        }
+
+        let istr = IntStrings::new();
+
+        if let Some(val) = &conf.keep_last {
+            cmd.push("--keep-last");
+            cmd.push(istr.format(*val));
+        }
+
+        if let Some(val) = &conf.keep_hourly {
+            cmd.push("--keep-hourly");
+            cmd.push(istr.format(*val));
+        }
+
+        if let Some(val) = &conf.keep_daily {
+            cmd.push("--keep-daily");
+            cmd.push(istr.format(*val));
+        }
+
+        if let Some(val) = &conf.keep_weekly {
+            cmd.push("--keep-weekly");
+            cmd.push(istr.format(*val));
+        }
+
+        if let Some(val) = &conf.keep_monthly {
+            cmd.push("--keep-monthly");
+            cmd.push(istr.format(*val));
+        }
+
+        if let Some(val) = &conf.keep_yearly {
+            cmd.push("--keep-yearly");
+            cmd.push(istr.format(*val));
+        }
+
+        if let Some(val) = &conf.keep_within {
+            cmd.push("--keep-within");
+            cmd.push(istr.format(*val));
+        }
+
+        if let Some(val) = &conf.keep_within_hourly {
+            cmd.push("--keep-within-hourly");
+            cmd.push(istr.format(*val));
+        }
+
+        if let Some(val) = &conf.keep_within_daily {
+            cmd.push("--keep-within-daily");
+            cmd.push(istr.format(*val));
+        }
+
+        if let Some(val) = &conf.keep_within_weekly {
+            cmd.push("--keep-within-weekly");
+            cmd.push(istr.format(*val));
+        }
+
+        if let Some(val) = &conf.keep_within_monthly {
+            cmd.push("--keep-within-monthly");
+            cmd.push(istr.format(*val));
+        }
+
+        if let Some(val) = &conf.keep_within_yearly {
+            cmd.push("--keep-within-yearly");
+            cmd.push(istr.format(*val));
+        }
+
+        if let Some(val) = &conf.keep_daily {
+            cmd.push("--keep-daily");
+            cmd.push(istr.format(*val));
+        }
+
+        if let Some(val) = &conf.keep_weekly {
+            cmd.push("--keep-weekly");
+            cmd.push(istr.format(*val));
+        }
+
+        if let Some(val) = &conf.keep_monthly {
+            cmd.push("--keep-monthly");
+            cmd.push(istr.format(*val));
+        }
+
+        if let Some(val) = &conf.keep_tag {
+            for val in val {
+                cmd.push("--keep-tag");
+                cmd.push(val.as_str());
+            }
+        }
+
+        if conf.unsafe_allow_remove_all.unwrap_or_default() {
+            cmd.push("--unsafe-allow-remove-all");
+        }
+
+        if let Some(val) = &conf.host {
+            for val in val {
+                cmd.push("--host");
+                cmd.push(val.as_str());
+            }
+        }
+
+        if let Some(val) = &conf.path {
+            for val in val {
+                cmd.push("--path");
+                cmd.push(val.as_str());
+            }
+        }
+
+        if let Some(val) = &conf.group_by {
+            cmd.push("--group-by");
+            cmd.push(val.as_str());
+        }
+
+        if conf.prune.unwrap_or_default() {
+            cmd.push("--prune");
+        }
+
+        if let Some(val) = &conf.max_unused {
+            cmd.push("--max-unused");
+            cmd.push(val.as_str());
+        }
+
+        if let Some(val) = &conf.max_repack_size {
+            cmd.push("--max-repack-size");
+            cmd.push(val.as_str());
+        }
+
+        if conf.repack_cacheable_only.unwrap_or_default() {
+            cmd.push("--repack-cacheable-only");
+        }
+
+        if conf.repack_small.unwrap_or_default() {
+            cmd.push("--repack-small");
+        }
+
+        if conf.repack_uncompressed.unwrap_or_default() {
+            cmd.push("--repack-uncompressed");
+        }
+
+        if let Some(val) = &conf.repack_smaller_than {
+            cmd.push("--repack-smaller-than");
+            cmd.push(val.as_str());
+        }
+
+        if dry {
+            cmd.push("--dry-run");
+        }
+
+        cmd.push("-r");
+        cmd.push(&repo.repo);
+
+        let mut env = Vec::new();
+
+        if let Some(passphrase) = &repo.passphrase {
+            env.push(("RESTIC_PASSWORD".to_string(), passphrase.clone()));
+        } else if let Some(pass_file) = &repo.passphrase_file {
+            let passphrase =
+                std::fs::read_to_string(pass_file).expect("Could not read passphrase file");
+            env.push(("RESTIC_PASSWORD".to_string(), passphrase));
+        } else {
+            log::error!(
+                "Neither passphrase nor passphrase file provided for {}",
+                repo.repo
+            );
+            targets_results.insert(repo.repo.clone(), Err(ResticError::Fatal));
+        }
+
+        if let Some(s3) = &repo.s3 {
+            env.push(("AWS_ACCESS_KEY_ID".to_string(), s3.access_key.clone()));
+            env.push(("AWS_SECRET_ACCESS_KEY".to_string(), s3.secret_key.clone()));
+        }
+
+        let mut ssh_opt = None;
+
+        if let Some(ssh) = &repo.ssh {
+            let remote = repo.repo.trim_start_matches("sftp:");
+            let hostpart = remote.split(':').collect::<Vec<_>>();
+            let hostpart = hostpart.first().unwrap();
+            let (user, host) = hostpart.split_once('@').unwrap();
+            let ssh_cmd = format!(
+                "ssh -i {} {} -o StrictHostKeyChecking=no {user}@{host} -s sftp",
+                ssh.identity,
+                if let Some(p) = ssh.port {
+                    format!("-p {p}")
+                } else {
+                    String::new()
+                }
+            );
+            ssh_opt = Some(format!("sftp.command={ssh_cmd}"));
+        }
+
+        if let Some(ssh_opt) = &ssh_opt {
+            cmd.push("-o");
+            cmd.push(ssh_opt);
+        }
+
+        let res = run_command(&cmd, Some(env));
+
+        if res.2 == 0 {
+            targets_results.insert(repo.repo.clone(), Ok(()));
+        } else {
+            let err = ResticError::from_code(res.2).unwrap();
+            targets_results.insert(repo.repo.clone(), Err(err));
+        }
+    }
+
+    targets_results
+}
+
+pub struct IntStrings {
+    // Keep the Box<str> so we can drop them safely
+    bufs: RefCell<Vec<Box<str>>>,
+}
+
+impl IntStrings {
+    pub fn new() -> Self {
+        Self {
+            bufs: RefCell::new(vec![]),
+        }
+    }
+
+    /// Returns a `&str` pointing into owned storage
+    pub fn format(&self, num: u64) -> &str {
+        let s: Box<str> = num.to_string().into_boxed_str();
+
+        // Leak the string to get a reference that lives "forever"
+        let s_ref: &str = Box::leak(s);
+
+        // Store the box in the Vec so we can drop later
+        self.bufs
+            .borrow_mut()
+            .push(unsafe { Box::from_raw(s_ref as *const str as *mut str) });
+
+        s_ref
+    }
 }
 
 pub enum ResticError {

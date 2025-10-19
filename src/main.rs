@@ -3,6 +3,7 @@ use bk::{
     backup::run_backup,
     config::Config,
 };
+use schemars::schema_for;
 
 // TODO : add basic ctrl+c support for ending bk tasks instead of everything and ensure cleanups
 
@@ -13,32 +14,20 @@ fn main() {
     }
     env_logger::init();
 
-    let args = std::env::args().collect::<Vec<_>>();
-
-    if args.len() > 2 {
-        let args: BkArgs = argh::from_env();
-        match args.cmd {
-            bk::args::BkCommand::Show(show_command) => {
-                let conf = Config::from_path(&show_command.config);
-                // TODO : better representation
-                println!("{conf:#?}");
-            }
-            bk::args::BkCommand::Run(run_command) => {
-                let state = run_backup(run_command);
-                std::process::exit(state);
-            }
+    let args: BkArgs = argh::from_env();
+    match args.cmd {
+        bk::args::BkCommand::Show(show_command) => {
+            let conf = Config::from_path(&show_command.config);
+            // TODO : better representation
+            println!("{conf:#?}");
         }
-    } else {
-        let conf = args.get(1).unwrap();
-
-        if conf == "-h" || conf.to_lowercase() == "--help" {
-            let _: BkArgs = argh::from_env();
+        bk::args::BkCommand::Run(run_command) => {
+            let state = run_backup(run_command);
+            std::process::exit(state);
         }
-
-        let state = run_backup(RunCommand {
-            config: conf.to_string(),
-            ..Default::default()
-        });
-        std::process::exit(state);
+        bk::args::BkCommand::ConfigSchema(_) => {
+            let schema = schema_for!(bk::config::Config);
+            println!("{}", serde_json::to_string_pretty(&schema).unwrap());
+        }
     }
 }

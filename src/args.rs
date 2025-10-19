@@ -12,7 +12,13 @@ pub struct BkArgs {
 pub enum BkCommand {
     Show(ShowCommand),
     Run(RunCommand),
+    ConfigSchema(ConfigSchema),
 }
+
+#[derive(FromArgs, PartialEq, Debug)]
+/// Show config json schema
+#[argh(subcommand, name = "config_schema")]
+pub struct ConfigSchema {}
 
 #[derive(FromArgs, PartialEq, Debug)]
 /// Show config
