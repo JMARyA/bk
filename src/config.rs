@@ -326,7 +326,7 @@ impl NtfyTarget {
             ntfy(
                 &ntfy_conf.host,
                 &ntfy_conf.topic,
-                ntfy_conf.auth.clone().map(|x| (x.user, x.pass)),
+                ntfy_conf.auth.clone().map(|x| x.auth()),
                 msg,
             )
             .unwrap();
@@ -346,5 +346,23 @@ pub struct NtfyConfiguration {
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct NtfyAuth {
     pub user: String,
-    pub pass: String,
+    pub pass: Option<String>,
+    pub pass_file: Option<String>,
+}
+
+impl NtfyAuth {
+    pub fn auth(&self) -> (String, String) {
+        let pass = if let Some(pass) = &self.pass {
+            Some(pass.clone())
+        } else if let Some(pass) = &self.pass_file {
+            Some(std::fs::read_to_string(pass).expect("unable to read ntfy passfile"))
+        } else {
+            None
+        };
+
+        (
+            self.user.clone(),
+            pass.expect("neither pass nor passfile provided"),
+        )
+    }
 }

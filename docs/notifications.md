@@ -9,6 +9,7 @@ host = <host>
 topic = <topic>
 auth.user = <user>
 auth.pass = <pass>
+# auth.pass_file = <file>
 ```
 
 And reference in a backup:
