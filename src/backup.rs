@@ -22,7 +22,7 @@ pub fn ensure_exists(dir: &str) {
     }
 }
 
-pub fn run_backup_rsync(conf: &RsyncConfig) {
+pub fn run_backup_rsync(conf: &RsyncConfig, dry: bool) {
     println!(
         "--> Running backup for {} -> {}",
         conf.src.paint(Color::Yellow),
@@ -37,6 +37,10 @@ pub fn run_backup_rsync(conf: &RsyncConfig) {
 
     if conf.delete.unwrap_or_default() {
         cmd.push("--delete");
+    }
+
+    if dry {
+        cmd.push("--dry-run")
     }
 
     if let Some(exclude) = &conf.exclude {
@@ -62,6 +66,10 @@ pub fn run_backup(args: RunCommand) -> i32 {
     let conf = Config::from_path(&args.config);
     let mut state = 0;
 
+    if args.dry_run {
+        log::warn!("Running in dry run mode. No backup jobs will happen.");
+    }
+
     if let Some(delay) = conf.delay {
         let wait = rand::random_range(0..delay);
         log::info!("Delaying backup for {wait} seconds...");
@@ -73,7 +81,7 @@ pub fn run_backup(args: RunCommand) -> i32 {
     }
 
     for rsync in &conf.rsync.unwrap_or_default() {
-        run_backup_rsync(rsync);
+        run_backup_rsync(rsync, args.dry_run);
     }
 
     for restic in &conf.restic.unwrap_or_default() {
@@ -90,6 +98,7 @@ pub fn run_backup(args: RunCommand) -> i32 {
             restic,
             conf.path.clone().unwrap_or_default(),
             conf.restic_target.clone().unwrap_or_default(),
+            args.dry_run,
         );
 
         for (target, res) in res {

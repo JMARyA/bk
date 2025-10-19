@@ -31,6 +31,10 @@ pub struct RunCommand {
     /// config file
     pub config: String,
 
+    #[argh(switch, short = 'n')]
+    /// dry run
+    pub dry_run: bool,
+
     #[argh(option)]
     /// only run operations including path
     pub path: Vec<String>,

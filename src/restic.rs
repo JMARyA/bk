@@ -19,6 +19,7 @@ pub fn create_archive(
     conf: &ResticConfig,
     path_provider: HashMap<String, LocalPath>,
     target_provider: HashMap<String, ResticTarget>,
+    dry: bool,
 ) -> HashMap<String, Result<(), ResticError>> {
     let mut paths: Vec<_> = conf
         .src
@@ -96,6 +97,10 @@ pub fn create_archive(
 
         if conf.exclude_caches.unwrap_or_default() {
             cmd.push("--exclude-caches");
+        }
+
+        if dry {
+            cmd.push("--dry-run");
         }
 
         let zstd10 = "auto".to_string();
