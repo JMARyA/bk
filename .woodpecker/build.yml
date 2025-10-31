@@ -19,5 +19,3 @@ steps:
       PACCO_HOST: "https://pac.hydrar.de"
       PACCO_TOKEN:
         from_secret: pacco_token
-      SIGN_KEY:
-        from_secret: sign_key
