@@ -16,7 +16,7 @@
       crane,
       flake-utils,
       ...
-    }:
+    }@inputs:
     flake-utils.lib.eachDefaultSystem (
       system:
       let
@@ -89,6 +89,8 @@
 
         packages.default = bk;
         packages.containerImage = dockerImage;
+
+        nixosModules.bk = import ./nixos/modules/bk.nix;
 
         apps.default = flake-utils.lib.mkApp {
           drv = bk;
