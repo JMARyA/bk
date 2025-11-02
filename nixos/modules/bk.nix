@@ -7,10 +7,10 @@
 }:
 
 let
-  cfg = config.bk;
+  cfg = config.services.bk;
 in
 {
-  options.bk = {
+  options.services.bk = {
     enable = lib.mkEnableOption "bk service";
 
     settings = lib.mkOption {
