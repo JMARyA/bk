@@ -13,17 +13,65 @@ in
   options.services.bk = {
     enable = lib.mkEnableOption "bk service";
 
-    settings = lib.mkOption {
+    state = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [ ];
+      description = "state paths to backup";
+    };
+
+    repo = lib.mkOption {
+      type = lib.types.str;
+      default = null;
+      description = "backup repository";
+    };
+
+    repoOptions = lib.mkOption {
       type = lib.types.attrs;
       default = { };
-      description = "bk.toml settings";
+      description = "repository options";
+    };
+
+    globalSettings = lib.mkOption {
+      type = lib.types.attrs;
+      default = { };
+      description = "Top level options";
+    };
+
+    settings = lib.mkOption {
+      type = lib.types.listOf lib.types.attrs;
+      default = [ ];
+      description = "bk.toml settings blocks";
     };
 
   };
 
   config = lib.mkIf cfg.enable {
 
-    environment.etc."bk.toml".source = pkgs.writers.writeTOML "bk.toml" cfg.settings;
+    assertions = [
+      {
+        assertion = (cfg.state != [ ] && cfg.repo == null);
+        message = "Repository can't be null if state is specified.";
+      }
+    ];
+
+    environment.etc."bk.toml".source = pkgs.writers.writeTOML "bk.toml" (
+      cfg.globalSettings
+      // (
+        inputs.self.lib.mergeBkConf (
+          if cfg.state != [ ] then
+            [
+              (inputs.self.lib.makeBk {
+                paths = cfg.state;
+                repo = cfg.repo;
+                extraTargetOptions = cfg.repoOptions;
+              })
+            ]
+          else
+            [ ]
+        )
+        ++ cfg.settings
+      )
+    );
 
     # Backup service
     systemd.services.bk-run = {
