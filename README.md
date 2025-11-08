@@ -77,7 +77,7 @@ Sample configuration:
     # Manual Configuration Blocks which get merged. Can contain raw config options or made with helper functions from inputs.bk.lib.
     settings = [
       # mkBk automatically sets up paths, targets and a basic restic operation
-      (inputs.lib.bk.mkBk {
+      (inputs.lib.bk.makeBk {
               paths = [ "/otherpath" ];
               repo = "/otherrepo";
               # Extra Options for the restic operation
