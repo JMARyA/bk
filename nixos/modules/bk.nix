@@ -8,6 +8,7 @@
 
 let
   cfg = config.services.bk;
+  bklib = import ../lib.nix;
 in
 {
   options.services.bk = {
@@ -57,10 +58,10 @@ in
     environment.etc."bk.toml".source = pkgs.writers.writeTOML "bk.toml" (
       cfg.globalSettings
       // (
-        inputs.self.lib.mergeBkConf (
+        bklib.mergeBkConf (
           if cfg.state != [ ] then
             [
-              (inputs.self.lib.makeBk {
+              (bklib.makeBk {
                 paths = cfg.state;
                 repo = cfg.repo;
                 extraTargetOptions = cfg.repoOptions;
