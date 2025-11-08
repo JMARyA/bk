@@ -57,8 +57,8 @@ in
 
     environment.etc."bk.toml".source = pkgs.writers.writeTOML "bk.toml" (
       cfg.globalSettings
-      // (
-        bklib.mergeBkConf (
+      // (bklib.mergeBkConf (
+        (
           if cfg.state != [ ] then
             [
               (bklib.makeBk {
@@ -71,7 +71,7 @@ in
             [ ]
         )
         ++ cfg.settings
-      )
+      ))
     );
 
     # Backup service
