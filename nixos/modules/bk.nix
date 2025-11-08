@@ -20,7 +20,7 @@ in
     };
 
     repo = lib.mkOption {
-      type = lib.types.str;
+      type = lib.types.nullOr lib.types.str;
       default = null;
       description = "backup repository";
     };
