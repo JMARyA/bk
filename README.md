@@ -12,15 +12,6 @@ See [Configuration](./docs/config.md) for more details.
 You need at least one backup location.
 
 This can be either:
-- [🍔 BK](#-bk)
-  - [Configuration](#configuration)
-  - [I want to backup](#i-want-to-backup)
-    - [Requirements](#requirements)
-      - [Local Filesystem Target](#local-filesystem-target)
-      - [SSH Remote Target](#ssh-remote-target)
-      - [S3 Remote Target](#s3-remote-target)
-    - [Local Machine](#local-machine)
-      - [Home Folder](#home-folder)
 
 #### Local Filesystem Target
 To use a local filesystem:
@@ -53,7 +44,56 @@ Host myhost
 #todo
 
 ### Local Machine
-#todo: docs
+#### Nixos
+To backup a Nixos machine, add `inputs.bk.url = "git+https://git.hydrar.de/jmarya/bk";` to your flake inputs.
+
+To use `bk` include the Nixos Module at `inputs.bk.nixosModules.bk`.
+
+Sample configuration:
+
+```nix
+{
+  services.bk = {
+    enable = true;
+
+    # The three options below is all thats needed for a basic backup
+
+    # State folders to backup
+    state = [
+      "/somepath"
+    ]:
+
+    # Backup repository
+    repo = "sftp:myhost:/backup/repo.restic"
+
+    # Options for the repository
+    repoOptions = {
+      passphrase_file = "/secret";
+    }
+
+    # Global configuration settings
+    globalSettings = { };
+
+    # Manual Configuration Blocks which get merged. Can contain raw config options or made with helper functions from inputs.bk.lib.
+    settings = [
+      # mkBk automatically sets up paths, targets and a basic restic operation
+      (inputs.lib.bk.mkBk {
+              paths = [ "/otherpath" ];
+              repo = "/otherrepo";
+              # Extra Options for the restic operation
+              extraOptions = {};
+              # Extra options for the paths
+              extraPathOptions = { };
+              # extra options for the target
+              extraTargetOptions = { };
+      })
+    ];
+
+  };
+}
+```
+
+This automatically builds a `/etc/bk.toml` config file and sets up systemd services for backup once a day.
 
 #### Home Folder
 
