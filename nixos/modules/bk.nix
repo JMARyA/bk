@@ -49,7 +49,7 @@ in
 
     assertions = [
       {
-        assertion = (cfg.state != [ ] && cfg.repo == null);
+        assertion = (cfg.state == [ ]) || (cfg.repo != null);
         message = "Repository can't be null if state is specified.";
       }
     ];
