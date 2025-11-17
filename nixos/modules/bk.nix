@@ -44,6 +44,12 @@ in
       description = "bk.toml settings blocks";
     };
 
+    config = lib.mkOption {
+      type = lib.types.attrs;
+      default = { };
+      description = "rendered bk.conf values for reference";
+    };
+
   };
 
   config = lib.mkIf cfg.enable {
@@ -55,7 +61,7 @@ in
       }
     ];
 
-    environment.etc."bk.toml".source = pkgs.writers.writeTOML "bk.toml" (
+    services.bk.config =
       cfg.globalSettings
       // (bklib.mergeBkConf (
         (
@@ -71,8 +77,9 @@ in
             [ ]
         )
         ++ cfg.settings
-      ))
-    );
+      ));
+
+    environment.etc."bk.toml".source = pkgs.writers.writeTOML "bk.toml" cfg.config;
 
     # Backup service
     systemd.services.bk-run = {
