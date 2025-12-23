@@ -92,7 +92,7 @@ in
       ];
       serviceConfig = {
         Type = "oneshot";
-        ExecStart = "${inputs.bk.packages.${pkgs.system}.default}/bin/bk run /etc/bk.toml";
+        ExecStart = "${inputs.bk.packages.${pkgs.system}.default}/bin/bk run --mode restic /etc/bk.toml";
         User = "root";
         Environment = "HOME=/root";
         StandardOutput = "journal";

@@ -22,6 +22,40 @@ pub fn ensure_exists(dir: &str) {
     }
 }
 
+#[derive(Default)]
+pub struct ModeSelection {
+    rsync: bool,
+    restic: bool,
+    restic_forget: bool
+}
+
+impl ModeSelection {
+    pub fn from(i: Vec<String>) -> Self {
+        if i.is_empty() {
+            return Self { rsync: true, restic: true, restic_forget: true }
+        }
+
+        let mut s = Self::default();
+
+        log::info!("Running with modes {i:?}");
+
+        for e in i {
+            match e.to_lowercase().as_str() {
+                "rsync" => s.rsync = true,
+                "restic" => s.restic = true,
+                "restic_forget" => s.restic_forget = true,
+                _ => {
+                    eprintln!("Unknown mode {e}");
+                    std::process::exit(1);
+                }
+            }
+        }
+
+        s
+    }
+
+}
+
 pub fn run_backup_rsync(conf: &RsyncConfig, dry: bool) {
     println!(
         "--> Running backup for {} -> {}",
@@ -80,94 +114,105 @@ pub fn run_backup(args: RunCommand) -> i32 {
         run_command(&["sh", script.as_str()], None);
     }
 
-    for rsync in &conf.rsync.unwrap_or_default() {
-        run_backup_rsync(rsync, args.dry_run);
+    // mode selection
+    let modes = ModeSelection::from(args.mode);
+
+    if modes.rsync {
+        for rsync in &conf.rsync.unwrap_or_default() {
+            run_backup_rsync(rsync, args.dry_run);
+        }
     }
 
     // Restic backups
-    for restic in &conf.restic.unwrap_or_default() {
-        if !args.path.iter().any(|x| restic.src.contains(x)) && !args.path.is_empty() {
-            log::info!(
-                "Skipping restic operation due to path filter: want {:?}, got {:?}",
-                args.path,
-                restic.src
+    if modes.restic {
+
+        for restic in &conf.restic.unwrap_or_default() {
+            if args.exclude.iter().any(|x| restic.src.contains(x)) {
+                log::info!(
+                    "Skipping restic operation due to exclude filter: exclude {:?}, got {:?}",
+                    args.exclude,
+                    restic.src
+                );
+                continue;
+            }
+            
+            
+            let res = restic::create_archive(
+                restic,
+                conf.path.clone().unwrap_or_default(),
+                conf.restic_target.clone().unwrap_or_default(),
+                args.dry_run,
             );
-            continue;
-        }
-
-        let res = restic::create_archive(
-            restic,
-            conf.path.clone().unwrap_or_default(),
-            conf.restic_target.clone().unwrap_or_default(),
-            args.dry_run,
-        );
-
-        for (target, res) in res {
-            let notify_provider = conf.ntfy.clone().unwrap_or_default();
-
-            if let Err(e) = res {
-                log::error!("Backup to target {target} failed: {e}");
-                state = 1;
-
-                for ntfy_key in restic.ntfy.clone().unwrap_or_default() {
-                    let ntfy_opt = notify_provider.get(&ntfy_key).unwrap();
-                    ntfy_opt.send_notification(&format!(
-                        "🚨 Backup failed for {} to {}: {e}",
-                        restic.src.join(", "),
-                        target
-                    ));
-                }
-            } else {
-                log::info!("Backup successfull for {target}");
-
-                for ntfy_key in restic.ntfy.clone().unwrap_or_default() {
-                    let ntfy_opt = notify_provider.get(&ntfy_key).unwrap();
-                    ntfy_opt.send_notification(&format!(
-                        "✅ Backup successful for {:?} to {}",
-                        restic.src, target
-                    ));
+            
+            for (target, res) in res {
+                let notify_provider = conf.ntfy.clone().unwrap_or_default();
+                
+                if let Err(e) = res {
+                    log::error!("Backup to target {target} failed: {e}");
+                    state = 1;
+                    
+                    for ntfy_key in restic.ntfy.clone().unwrap_or_default() {
+                        let ntfy_opt = notify_provider.get(&ntfy_key).unwrap();
+                        ntfy_opt.send_notification(&format!(
+                            "🚨 Backup failed for {} to {}: {e}",
+                            restic.src.join(", "),
+                            target
+                        ));
+                    }
+                } else {
+                    log::info!("Backup successfull for {target}");
+                    
+                    for ntfy_key in restic.ntfy.clone().unwrap_or_default() {
+                        let ntfy_opt = notify_provider.get(&ntfy_key).unwrap();
+                        ntfy_opt.send_notification(&format!(
+                            "✅ Backup successful for {:?} to {}",
+                            restic.src, target
+                        ));
+                    }
                 }
             }
         }
     }
-
+        
     // Restic forget
-    for restic in &conf.restic_forget.unwrap_or_default() {
-        let res = restic::forget_archive(
-            restic,
-            conf.restic_target.clone().unwrap_or_default(),
-            args.dry_run,
-        );
-
-        for (target, res) in res {
-            let notify_provider = conf.ntfy.clone().unwrap_or_default();
-
-            if let Err(e) = res {
-                log::error!("Forget for target {target} failed: {e}");
-                state = 1;
-
-                for ntfy_key in restic.ntfy.clone().unwrap_or_default() {
-                    let ntfy_opt = notify_provider.get(&ntfy_key).unwrap();
-                    ntfy_opt.send_notification(&format!(
-                        "🚨 Forget failed for {} to {}: {e}",
-                        restic.targets.join(", "),
-                        target
-                    ));
-                }
-            } else {
-                log::info!("Forget successfull for {target}");
-
-                for ntfy_key in restic.ntfy.clone().unwrap_or_default() {
-                    let ntfy_opt = notify_provider.get(&ntfy_key).unwrap();
-                    ntfy_opt.send_notification(&format!(
-                        "✅ Forget successful for {:?} to {}",
-                        restic.targets, target
-                    ));
+    if modes.restic_forget {
+        for restic in &conf.restic_forget.unwrap_or_default() {
+            let res = restic::forget_archive(
+                restic,
+                conf.restic_target.clone().unwrap_or_default(),
+                args.dry_run,
+            );
+            
+            for (target, res) in res {
+                let notify_provider = conf.ntfy.clone().unwrap_or_default();
+                
+                if let Err(e) = res {
+                    log::error!("Forget for target {target} failed: {e}");
+                    state = 1;
+                    
+                    for ntfy_key in restic.ntfy.clone().unwrap_or_default() {
+                        let ntfy_opt = notify_provider.get(&ntfy_key).unwrap();
+                        ntfy_opt.send_notification(&format!(
+                            "🚨 Forget failed for {} to {}: {e}",
+                            restic.targets.join(", "),
+                            target
+                        ));
+                    }
+                } else {
+                    log::info!("Forget successfull for {target}");
+                    
+                    for ntfy_key in restic.ntfy.clone().unwrap_or_default() {
+                        let ntfy_opt = notify_provider.get(&ntfy_key).unwrap();
+                        ntfy_opt.send_notification(&format!(
+                            "✅ Forget successful for {:?} to {}",
+                            restic.targets, target
+                        ));
+                    }
                 }
             }
         }
     }
-
+        
     if let Some(script) = &conf.end_script {
         run_command(&["sh", script.as_str()], None);
     }

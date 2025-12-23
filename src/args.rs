@@ -41,7 +41,11 @@ pub struct RunCommand {
     /// dry run
     pub dry_run: bool,
 
-    #[argh(option)]
-    /// only run operations including path
-    pub path: Vec<String>,
+    #[argh(option, short = 'e')]
+    /// exclude paths from operations
+    pub exclude: Vec<String>,
+
+    #[argh(option, short = 'm')]
+    /// enable a mode of operation (module)
+    pub mode: Vec<String>,
 }
