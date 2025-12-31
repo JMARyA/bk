@@ -1,8 +1,4 @@
-use bk::{
-    args::{BkArgs, RunCommand},
-    backup::run_backup,
-    config::Config,
-};
+use bk::{args::BkArgs, backup::run_backup, config::Config};
 use schemars::schema_for;
 
 // TODO : add basic ctrl+c support for ending bk tasks instead of everything and ensure cleanups

@@ -15,6 +15,8 @@ pub fn umount(mount: &str) {
     run_command(&["umount", mount], None);
 }
 
+const NO_S3_CREDS: &str = "no s3 credentials provided";
+
 pub fn create_archive(
     conf: &ResticConfig,
     path_provider: HashMap<String, LocalPath>,
@@ -140,8 +142,14 @@ pub fn create_archive(
         }
 
         if let Some(s3) = &repo.s3 {
-            env.push(("AWS_ACCESS_KEY_ID".to_string(), s3.access_key.clone()));
-            env.push(("AWS_SECRET_ACCESS_KEY".to_string(), s3.secret_key.clone()));
+            env.push((
+                "AWS_ACCESS_KEY_ID".to_string(),
+                s3.access_key().expect(NO_S3_CREDS).clone(),
+            ));
+            env.push((
+                "AWS_SECRET_ACCESS_KEY".to_string(),
+                s3.secret_key().expect(NO_S3_CREDS).clone(),
+            ));
         }
 
         let mut ssh_opt = None;
@@ -360,23 +368,29 @@ pub fn forget_archive(
 
         let mut env = Vec::new();
 
-        if let Some(passphrase) = &repo.passphrase {
-            env.push(("RESTIC_PASSWORD".to_string(), passphrase.clone()));
-        } else if let Some(pass_file) = &repo.passphrase_file {
-            let passphrase =
-                std::fs::read_to_string(pass_file).expect("Could not read passphrase file");
-            env.push(("RESTIC_PASSWORD".to_string(), passphrase));
-        } else {
-            log::error!(
-                "Neither passphrase nor passphrase file provided for {}",
-                repo.repo
-            );
-            targets_results.insert(repo.repo.clone(), Err(ResticError::Fatal));
+        let passphrase = find_password(&repo.passphrase, &repo.passphrase_file);
+        match passphrase {
+            Some(passphrase) => {
+                env.push(("RESTIC_PASSWORD".to_string(), passphrase.clone()));
+            }
+            None => {
+                log::error!(
+                    "Neither passphrase nor passphrase file provided for {}",
+                    repo.repo
+                );
+                targets_results.insert(repo.repo.clone(), Err(ResticError::Fatal));
+            }
         }
 
         if let Some(s3) = &repo.s3 {
-            env.push(("AWS_ACCESS_KEY_ID".to_string(), s3.access_key.clone()));
-            env.push(("AWS_SECRET_ACCESS_KEY".to_string(), s3.secret_key.clone()));
+            env.push((
+                "AWS_ACCESS_KEY_ID".to_string(),
+                s3.access_key().expect(NO_S3_CREDS).clone(),
+            ));
+            env.push((
+                "AWS_SECRET_ACCESS_KEY".to_string(),
+                s3.secret_key().expect(NO_S3_CREDS).clone(),
+            ));
         }
 
         let mut ssh_opt = None;
@@ -414,6 +428,23 @@ pub fn forget_archive(
     }
 
     targets_results
+}
+
+pub fn find_password(password: &Option<String>, pass_file: &Option<String>) -> Option<String> {
+    match password {
+        Some(_) => {
+            return password.clone();
+        }
+        None => {
+            if let Some(pass_file) = pass_file {
+                let passphrase =
+                    std::fs::read_to_string(pass_file).expect("Could not read passphrase file");
+                return Some(passphrase);
+            }
+        }
+    }
+
+    None
 }
 
 pub struct IntStrings {

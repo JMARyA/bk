@@ -26,8 +26,14 @@ Read the passphrase for the repository from a file
 ### `s3.access_key`
 optional auth key for s3
 
+### `s3.access_key_file`
+read key from a file
+
 ### `s3.secret_key`
 optional auth key for s3
+
+### `s3.secret_key_file`
+read key from a file
 
 ### `ssh.port`
 The port for SSH

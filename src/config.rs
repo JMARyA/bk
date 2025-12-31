@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     backup::{cephfs_snap_create, cephfs_snap_remove, ensure_exists},
     notify::ntfy,
-    restic::{bind_mount, umount},
+    restic::{bind_mount, find_password, umount},
 };
 
 /// Configuration structure for the backup system.
@@ -91,8 +91,20 @@ pub struct ResticTarget {
 /// S3 Credentials
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct S3Creds {
-    pub access_key: String,
-    pub secret_key: String,
+    pub access_key: Option<String>,
+    pub secret_key: Option<String>,
+    pub access_key_file: Option<String>,
+    pub secret_key_file: Option<String>,
+}
+
+impl S3Creds {
+    pub fn access_key(&self) -> Option<String> {
+        find_password(&self.access_key, &self.access_key_file)
+    }
+
+    pub fn secret_key(&self) -> Option<String> {
+        find_password(&self.secret_key, &self.secret_key_file)
+    }
 }
 
 /// SSH Options
