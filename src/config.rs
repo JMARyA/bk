@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use facet::Facet;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -10,7 +11,8 @@ use crate::{
 };
 
 /// Configuration structure for the backup system.
-#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[derive(Facet, Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[facet(skip_all_unless_truthy)]
 pub struct Config {
     /// Optional script to run before starting the backup process.
     pub start_script: Option<String>,
@@ -43,12 +45,13 @@ pub struct Config {
 
 impl Config {
     pub fn from_path(path: &str) -> Self {
-        toml::from_str(&std::fs::read_to_string(path).unwrap()).unwrap()
+        facet_toml::from_str(&std::fs::read_to_string(path).unwrap()).unwrap()
     }
 }
 
 /// Configuration for an individual rsync job.
-#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[derive(Facet, Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[facet(skip_all_unless_truthy)]
 pub struct RsyncConfig {
     /// Source path for rsync.
     pub src: String,
@@ -70,7 +73,8 @@ pub struct RsyncConfig {
 }
 
 /// Configuration for a restic target.
-#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[derive(Facet, Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[facet(skip_all_unless_truthy)]
 pub struct ResticTarget {
     /// Restic repository URL.
     pub repo: String,
@@ -82,6 +86,7 @@ pub struct ResticTarget {
     pub ssh: Option<SSHOptions>,
 
     /// Optional passphrase for the repository.
+    #[facet(sensitive)]
     pub passphrase: Option<String>,
 
     /// Read passphrase from file
@@ -89,9 +94,11 @@ pub struct ResticTarget {
 }
 
 /// S3 Credentials
-#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[derive(Facet, Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[facet(skip_all_unless_truthy)]
 pub struct S3Creds {
     pub access_key: Option<String>,
+    #[facet(sensitive)]
     pub secret_key: Option<String>,
     pub access_key_file: Option<String>,
     pub secret_key_file: Option<String>,
@@ -108,14 +115,16 @@ impl S3Creds {
 }
 
 /// SSH Options
-#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[derive(Facet, Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[facet(skip_all_unless_truthy)]
 pub struct SSHOptions {
     pub port: Option<u16>,
     pub identity: String,
 }
 
 /// Configuration for an individual restic backup job.
-#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[derive(Facet, Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[facet(skip_all_unless_truthy)]
 pub struct ResticConfig {
     /// Notifications
     pub ntfy: Option<Vec<String>>,
@@ -156,8 +165,10 @@ pub struct ResticConfig {
     /// Host override
     pub host: Option<String>,
 }
+
 /// Configuration for an individual restic forget job.
-#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[derive(Facet, Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[facet(skip_all_unless_truthy)]
 pub struct ResticForget {
     /// Notifications (e.g. ntfy topics to notify after job)
     pub ntfy: Option<Vec<String>>,
@@ -165,46 +176,72 @@ pub struct ResticForget {
     /// Restic repository targets
     pub targets: Vec<String>,
 
+    #[serde(flatten)]
+    pub args: ResticForgetArgs,
+}
+
+#[derive(Facet, Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[facet(skip_all_unless_truthy)]
+pub struct ResticForgetArgs {
+    #[serde(rename = "dry-run")]
+    pub dry_run: bool,
+    pub repo: Option<String>,
+    pub option: Vec<String>,
+
     /// keep the last n snapshots (use "unlimited" to keep all)
+    #[serde(rename = "keep-last")]
     pub keep_last: Option<u64>,
 
     /// keep the last n hourly snapshots
+    #[serde(rename = "keep-hourly")]
     pub keep_hourly: Option<u64>,
 
     /// keep the last n daily snapshots
+    #[serde(rename = "keep-daily")]
     pub keep_daily: Option<u64>,
 
     /// keep the last n weekly snapshots
+    #[serde(rename = "keep-weekly")]
     pub keep_weekly: Option<u64>,
 
     /// keep the last n monthly snapshots
+    #[serde(rename = "keep-monthly")]
     pub keep_monthly: Option<u64>,
 
     /// keep the last n yearly snapshots
+    #[serde(rename = "keep-yearly")]
     pub keep_yearly: Option<u64>,
 
     /// keep snapshots newer than this duration (e.g. "1y5m7d2h")
+    #[serde(rename = "keep-within")]
     pub keep_within: Option<u64>,
 
     /// keep hourly snapshots newer than this duration
+    #[serde(rename = "keep-within-hourly")]
     pub keep_within_hourly: Option<u64>,
 
     /// keep daily snapshots newer than this duration
+    #[serde(rename = "keep-within-daily")]
     pub keep_within_daily: Option<u64>,
 
     /// keep weekly snapshots newer than this duration
+    #[serde(rename = "keep-within-weekly")]
     pub keep_within_weekly: Option<u64>,
 
     /// keep monthly snapshots newer than this duration
+    #[serde(rename = "keep-within-monthly")]
     pub keep_within_monthly: Option<u64>,
 
     /// keep yearly snapshots newer than this duration
+    #[serde(rename = "keep-within-yearly")]
     pub keep_within_yearly: Option<u64>,
 
     /// keep snapshots with these tags
+    #[serde(rename = "keep-tag")]
     pub keep_tag: Option<Vec<String>>,
 
     /// allow deleting all snapshots of a snapshot group
+    #[serde(rename = "unsafe-allow-remove-all")]
     pub unsafe_allow_remove_all: Option<bool>,
 
     /// only consider snapshots for this host
@@ -220,34 +257,42 @@ pub struct ResticForget {
     pub compact: Option<bool>,
 
     /// group snapshots by host, paths, and/or tags (disable grouping with "")
+    #[serde(rename = "group-by")]
     pub group_by: Option<String>,
 
     /// automatically run 'prune' if snapshots were removed
     pub prune: Option<bool>,
 
     /// tolerate this amount of unused data (default "5%")
+    #[serde(rename = "max-unused")]
     pub max_unused: Option<String>,
 
     /// stop after repacking this much data
+    #[serde(rename = "max-repack-size")]
     pub max_repack_size: Option<String>,
 
     /// only repack packs which are cacheable
+    #[serde(rename = "repack-cacheable-only")]
     pub repack_cacheable_only: Option<bool>,
 
     /// repack pack files below 80% of target pack size
+    #[serde(rename = "repack-small")]
     pub repack_small: Option<bool>,
 
     /// repack all uncompressed data
+    #[serde(rename = "repack-uncompressed")]
     pub repack_uncompressed: Option<bool>,
 
     /// repack packfiles below this size
+    #[serde(rename = "repack-smaller-than")]
     pub repack_smaller_than: Option<String>,
 }
 
 // INPUT
 
 /// Local path input
-#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[derive(Facet, Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[facet(skip_all_unless_truthy)]
 pub struct LocalPath {
     /// The local path
     pub path: String,
@@ -327,7 +372,8 @@ impl Drop for LocalPathRef {
 // Notification
 
 /// Ntfy configuration
-#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[derive(Facet, Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[facet(skip_all_unless_truthy)]
 pub struct NtfyTarget {
     pub ntfy: Option<NtfyConfiguration>,
 }
@@ -347,7 +393,8 @@ impl NtfyTarget {
 }
 
 /// Ntfy configuration
-#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[derive(Facet, Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[facet(skip_all_unless_truthy)]
 pub struct NtfyConfiguration {
     pub host: String,
     pub topic: String,
@@ -355,9 +402,11 @@ pub struct NtfyConfiguration {
 }
 
 /// Ntfy configuration
-#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[derive(Facet, Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[facet(skip_all_unless_truthy)]
 pub struct NtfyAuth {
     pub user: String,
+    #[facet(sensitive)]
     pub pass: Option<String>,
     pub pass_file: Option<String>,
 }

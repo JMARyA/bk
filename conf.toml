@@ -1,0 +1,12 @@
+[path.my_path]
+path = "/Users/angelo/Downloads/watchdogs"
+
+[restic_target.my_restic_target]
+repo = "/Users/angelo/Downloads/bk/repo_target"
+passphrase = "password"
+
+[[restic]]
+targets = ["my_restic_target"] 
+src = [
+   "my_path"
+]

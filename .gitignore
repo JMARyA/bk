@@ -2,3 +2,5 @@
 /k8s-operator/target
 /k8s-operator/cluster-test
 /result
+/site
+/repo_target

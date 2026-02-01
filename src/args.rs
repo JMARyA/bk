@@ -11,8 +11,11 @@ pub struct BkArgs {
 #[argh(subcommand)]
 pub enum BkCommand {
     Show(ShowCommand),
+    Init(InitCommand),
     Run(RunCommand),
+    List(ListCommand),
     ConfigSchema(ConfigSchema),
+    Serve(ServeCommand),
 }
 
 #[derive(FromArgs, PartialEq, Debug)]
@@ -24,6 +27,33 @@ pub struct ConfigSchema {}
 /// Show config
 #[argh(subcommand, name = "show")]
 pub struct ShowCommand {
+    #[argh(positional)]
+    /// config file
+    pub config: String,
+}
+
+#[derive(FromArgs, PartialEq, Debug)]
+/// Init repositories
+#[argh(subcommand, name = "init")]
+pub struct InitCommand {
+    #[argh(positional)]
+    /// config file
+    pub config: String,
+}
+
+#[derive(FromArgs, PartialEq, Debug)]
+/// List snapshots
+#[argh(subcommand, name = "list")]
+pub struct ListCommand {
+    #[argh(positional)]
+    /// config file
+    pub config: String,
+}
+
+#[derive(FromArgs, PartialEq, Debug)]
+/// Serve the server
+#[argh(subcommand, name = "serve")]
+pub struct ServeCommand {
     #[argh(positional)]
     /// config file
     pub config: String,

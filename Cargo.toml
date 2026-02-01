@@ -24,3 +24,12 @@ serde = { version = "1.0.217", features = ["derive"] }
 serde_json = "1.0.145"
 toml = "0.9.0"
 yansi = "1.0.1"
+cmdbind = { git = "https://git.hydrar.de/jmarya/cmdbind", features = ["async"] }
+facet = { version = "0.42.0", features = ["chrono"] }
+facet-json = "0.42.0"
+miette = { version = "7.6.0", features = ["fancy"] }
+derive_builder = "0.20.2"
+ssh-key = { version = "0.6.7", features = ["ed25519"] }
+facet-pretty = "0.42.0"
+facet-toml = "0.42.0"
+
