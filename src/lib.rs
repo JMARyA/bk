@@ -5,6 +5,7 @@ pub mod backup;
 pub mod config;
 pub mod notify;
 pub mod restic;
+pub mod server;
 
 pub fn run_command(cmd: &[&str], env: Option<Vec<(String, String)>>) -> (String, String, i32) {
     println!("--> {} ", cmd.join(" ").paint(Color::Blue));

@@ -32,4 +32,7 @@ derive_builder = "0.20.2"
 ssh-key = { version = "0.6.7", features = ["ed25519"] }
 facet-pretty = "0.42.0"
 facet-toml = "0.42.0"
+sqlx = { version = "0.8.6", features = ["postgres"] }
+tokio = "1.49.0"
+axum = "0.8.8"
 

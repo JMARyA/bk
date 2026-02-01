@@ -1,4 +1,4 @@
-use bk::{args::BkArgs, backup::run_backup, config::Config};
+use bk::{args::BkArgs, backup::run_backup, config::Config, server};
 use facet_pretty::FacetPretty;
 use schemars::schema_for;
 
@@ -18,7 +18,9 @@ fn main() {
             // TODO : better representation
             println!("{}", conf.pretty());
         }
-        bk::args::BkCommand::Serve(srv) => {}
+        bk::args::BkCommand::Serve(srv) => {
+            server::server();
+        }
         bk::args::BkCommand::List(lst) => {
             let conf = Config::from_path(&lst.config);
             for (name, target) in conf.restic_target.unwrap_or_default() {

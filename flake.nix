@@ -18,7 +18,7 @@
       ...
     }@inputs:
     {
-      
+
       nixosModules.bk = import ./nixos/modules/bk.nix;
 
       lib = import ./nixos/lib.nix;
@@ -30,26 +30,38 @@
         pkgs = nixpkgs.legacyPackages.${system};
         craneLib = crane.mkLib pkgs;
 
-        commonArgs = {
-          src = craneLib.cleanCargoSource ./.;
-          strictDeps = true;
+        commonArgs =
+          let
+            unfilteredRoot = ./.;
+            src = craneLib.fileset.toSource {
+              root = unfilteredRoot;
+              fileset = craneLib.fileset.unions [
+                (craneLib.fileset.commonCargoSources unfilteredRoot)
+                ./migrations
+              ];
+            };
 
-          OPENSSL_NO_VENDOR = "1";
+          in
+          {
+            inherit src;
+            strictDeps = true;
 
-          PKG_CONFIG_PATH = "${pkgs.openssl.dev}/lib/pkgconfig";
+            OPENSSL_NO_VENDOR = "1";
 
-          nativeBuildInputs = [
-            pkgs.pkg-config
-          ];
+            PKG_CONFIG_PATH = "${pkgs.openssl.dev}/lib/pkgconfig";
 
-          buildInputs = [
-            pkgs.openssl
-          ]
-          ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
-            # Additional darwin specific inputs can be set here
-            pkgs.libiconv
-          ];
-        };
+            nativeBuildInputs = [
+              pkgs.pkg-config
+            ];
+
+            buildInputs = [
+              pkgs.openssl
+            ]
+            ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
+              # Additional darwin specific inputs can be set here
+              pkgs.libiconv
+            ];
+          };
 
         bk = craneLib.buildPackage (
           commonArgs
