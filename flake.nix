@@ -28,40 +28,38 @@
       system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
+        inherit (pkgs) lib;
         craneLib = crane.mkLib pkgs;
 
-        commonArgs =
-          let
-            unfilteredRoot = ./.;
-            src = craneLib.fileset.toSource {
-              root = unfilteredRoot;
-              fileset = craneLib.fileset.unions [
-                (craneLib.fileset.commonCargoSources unfilteredRoot)
-                ./migrations
-              ];
-            };
+        unfilteredRoot = ./.;
+        src = lib.fileset.toSource {
+          root = unfilteredRoot;
+          fileset = lib.fileset.unions [
+            (craneLib.fileset.commonCargoSources unfilteredRoot)
+            ./migrations
+          ];
+        };
 
-          in
-          {
-            inherit src;
-            strictDeps = true;
+        commonArgs = {
+          inherit src;
+          strictDeps = true;
 
-            OPENSSL_NO_VENDOR = "1";
+          OPENSSL_NO_VENDOR = "1";
 
-            PKG_CONFIG_PATH = "${pkgs.openssl.dev}/lib/pkgconfig";
+          PKG_CONFIG_PATH = "${pkgs.openssl.dev}/lib/pkgconfig";
 
-            nativeBuildInputs = [
-              pkgs.pkg-config
-            ];
+          nativeBuildInputs = [
+            pkgs.pkg-config
+          ];
 
-            buildInputs = [
-              pkgs.openssl
-            ]
-            ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
-              # Additional darwin specific inputs can be set here
-              pkgs.libiconv
-            ];
-          };
+          buildInputs = [
+            pkgs.openssl
+          ]
+          ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
+            # Additional darwin specific inputs can be set here
+            pkgs.libiconv
+          ];
+        };
 
         bk = craneLib.buildPackage (
           commonArgs

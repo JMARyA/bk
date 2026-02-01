@@ -1,6 +1,4 @@
 use bk::cli::BkArgs;
-use facet_pretty::FacetPretty;
-use schemars::schema_for;
 
 // TODO : add basic ctrl+c support for ending bk tasks instead of everything and ensure cleanups
 

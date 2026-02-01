@@ -25,6 +25,9 @@ pub struct Config {
     /// Optional Max Jitter Delay in seconds. Randomized wait time to evenly distribute backups if started via exact cron for example
     pub delay: Option<u64>,
 
+    /// Home Server
+    pub home: Option<String>,
+
     // CDRs
     /// Local path inputs
     pub path: Option<HashMap<String, LocalPath>>,
@@ -110,6 +113,17 @@ pub struct ResticConfig {
 
     /// Restic targets
     pub targets: Vec<String>,
+
+    #[facet(flatten)]
+    pub options: ResticBackupConfig,
+}
+
+#[derive(Facet, Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[facet(skip_all_unless_truthy)]
+pub struct ResticBackupConfig {
+    /// The target
+    #[facet(default)]
+    pub target: String,
 
     /// List of source paths to include in the backup.
     pub src: Vec<String>,

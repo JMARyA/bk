@@ -91,11 +91,11 @@ impl RunCommand {
         // Restic backups
         if modes.restic {
             for restic in &conf.restic.unwrap_or_default() {
-                if self.exclude.iter().any(|x| restic.src.contains(x)) {
+                if self.exclude.iter().any(|x| restic.options.src.contains(x)) {
                     log::info!(
                         "Skipping restic operation due to exclude filter: exclude {:?}, got {:?}",
                         self.exclude,
-                        restic.src
+                        restic.options.src
                     );
                     continue;
                 }
@@ -105,6 +105,7 @@ impl RunCommand {
                     conf.path.clone().unwrap_or_default(),
                     conf.restic_target.clone().unwrap_or_default(),
                     self.dry_run,
+                    conf.home.clone(),
                 );
 
                 for (target, res) in res {
@@ -118,7 +119,7 @@ impl RunCommand {
                             let ntfy_opt = notify_provider.get(&ntfy_key).unwrap();
                             ntfy_opt.send_notification(&format!(
                                 "🚨 Backup failed for {} to {}: {e}",
-                                restic.src.join(", "),
+                                restic.options.src.join(", "),
                                 target
                             ));
                         }
@@ -129,7 +130,7 @@ impl RunCommand {
                             let ntfy_opt = notify_provider.get(&ntfy_key).unwrap();
                             ntfy_opt.send_notification(&format!(
                                 "✅ Backup successful for {:?} to {}",
-                                restic.src, target
+                                restic.options.src, target
                             ));
                         }
                     }

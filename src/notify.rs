@@ -5,7 +5,11 @@ use serde::{Deserialize, Serialize};
 use std::error::Error;
 
 /// Sends a POST request to the specified API endpoint with a given body.
-fn post_api(url: &str, body: &str, auth: Option<(String, String)>) -> Result<(), Box<dyn Error>> {
+pub fn post_api(
+    url: &str,
+    body: &str,
+    auth: Option<(String, String)>,
+) -> Result<(), Box<dyn Error>> {
     let client = Client::new();
     let mut request = client.post(url).body(body.to_string());
 

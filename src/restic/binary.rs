@@ -1,6 +1,6 @@
 use cmdbind::{CommandOutput, wrap_binary};
 
-use crate::config::ResticConfig;
+use crate::config::{ResticBackupConfig, ResticConfig};
 
 #[derive(Debug, Default, serde::Serialize)]
 pub struct ResticInitArgs {
@@ -49,7 +49,7 @@ pub struct ResticBackupCommandArgs {
 }
 
 impl ResticBackupCommandArgs {
-    pub fn from_config(conf: ResticConfig) -> Self {
+    pub fn from_config(conf: ResticBackupConfig) -> Self {
         Self {
             exclude: conf.exclude,
             exclude_if_present: conf.exclude_if_present,

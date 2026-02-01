@@ -18,6 +18,13 @@ Run a script after executing backup tasks.
 end_script = "end.sh"
 ```
 
+### `home`
+The [home server](../server.md) bk should report to.
+
+```toml
+home = "https://bk.example.com"
+```
+
 ### `delay`
 Wait a random delay before starting to backup. The value is the maximum wait time in seconds.
 

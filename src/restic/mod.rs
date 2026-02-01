@@ -15,12 +15,14 @@ use cmdbind::{
 
 use facet::Facet;
 use miette::{IntoDiagnostic, Result};
+use toml::ser;
 use yansi::{Color, Paint};
 
 use crate::{
-    config::{ResticConfig, ResticForget, ResticForgetArgs, ResticTarget},
+    config::{ResticBackupConfig, ResticConfig, ResticForget, ResticForgetArgs, ResticTarget},
     input::{LocalPath, LocalPathRef},
-    run_command,
+    notify::post_api,
+    run_command, server,
 };
 
 pub fn bind_mount(src: &str, dst: &str) {
@@ -202,7 +204,7 @@ impl ResticTarget {
             let parsed = parse_json_lines(&stdout);
             for msg in parsed {
                 match msg {
-                    ResticMsgType::Status(restic_status_msg) => {}
+                    ResticMsgType::Status(_) => {}
                     ResticMsgType::Changed(restic_changed_msg) => {
                         let x = (
                             restic_changed_msg.old_snapshot_id,
@@ -211,7 +213,7 @@ impl ResticTarget {
                         log::info!("Tagged '{}' -> '{}'", x.0, x.1);
                         return Ok(x);
                     }
-                    ResticMsgType::Summary(restic_summary_msg) => {}
+                    ResticMsgType::Summary(_) => {}
                 }
             }
         }
@@ -303,12 +305,10 @@ pub fn create_archive(
     path_provider: HashMap<String, LocalPath>,
     target_provider: HashMap<String, ResticTarget>,
     dry: bool,
+    home: Option<String>,
 ) -> HashMap<String, Result<(), ResticError>> {
-    // TODO : sanity checks on head tag / init logic
-
-    // TODO : get previous head / init logic
-
     let mut paths: Vec<_> = conf
+        .options
         .src
         .iter()
         .map(|x| {
@@ -344,89 +344,177 @@ pub fn create_archive(
     let mut targets_results = HashMap::new();
 
     for repo in targets {
-        log::info!(
-            "Running backup for {} on {}",
-            conf.src.join(",").paint(Color::Yellow),
-            repo.repo.paint(Color::Yellow)
+        targets_results.insert(
+            repo.repo.clone(),
+            create_archive_target(&conf.options, dirs.clone(), repo, dry, home.clone()),
         );
+    }
 
-        let mut cmd_args = ResticBackupCommandArgs::from_config(conf.clone());
+    targets_results
+}
 
-        cmd_args.dry_run = dry;
-        cmd_args.json = true;
-        cmd_args.repo = repo.repo.clone();
-        cmd_args
-            .positional_0_dir
-            .extend(dirs.iter().map(|x| x.to_string()));
+pub fn create_archive_target(
+    conf: &ResticBackupConfig,
+    src: Vec<String>,
+    target: &ResticTarget,
+    dry: bool,
+    home: Option<String>,
+) -> Result<(), ResticError> {
+    log::info!(
+        "Running backup for {} on {}",
+        conf.src.join(",").paint(Color::Yellow),
+        target.repo.paint(Color::Yellow)
+    );
 
-        let env = match repo.setup_env() {
-            Err(e) => {
-                targets_results.insert(repo.repo.clone(), Err(e));
-                continue;
-            }
-            Ok((env, ssh_opt)) => {
-                if let Some(ssh_opt) = ssh_opt {
-                    cmd_args.option.push(ssh_opt);
-                }
-                env
-            }
-        };
+    // TODO : sanity checks on head tag / init logic
 
-        let snapshots = repo.get_snapshots().unwrap();
-        let snapshots: Vec<_> = snapshots
-            .into_iter()
-            .filter_map(is_head_tag(&HeadTag::own()))
-            .collect();
-        println!("{} : {}", snapshots.len(), snapshots.pretty());
+    // TODO : get previous head / init logic
 
-        // TODO : resolve failure case : multiple heads
-        if snapshots.len() > 1 {
-            panic!("Multiple Heads 🐉");
+    let mut cmd_args = ResticBackupCommandArgs::from_config(conf.clone());
+
+    cmd_args.dry_run = dry;
+    cmd_args.json = true;
+    cmd_args.repo = target.repo.clone();
+    cmd_args
+        .positional_0_dir
+        .extend(src.iter().map(|x| x.to_string()));
+
+    let env = match target.setup_env() {
+        Err(e) => {
+            return Err(e);
         }
+        Ok((env, ssh_opt)) => {
+            if let Some(ssh_opt) = ssh_opt {
+                cmd_args.option.push(ssh_opt);
+            }
+            env
+        }
+    };
 
-        let (_, parent) = if snapshots.len() == 0 {
-            (String::new(), String::new())
-        } else {
-            repo.modify_tag(
+    let snapshots = target.get_snapshots().unwrap();
+    let snapshots: Vec<_> = snapshots
+        .into_iter()
+        .filter_map(is_head_tag(&HeadTag::own()))
+        .collect();
+    println!("{} : {}", snapshots.len(), snapshots.pretty());
+
+    // TODO : resolve failure case : multiple heads
+    if snapshots.len() > 1 {
+        panic!("Multiple Heads 🐉");
+    }
+
+    let (_, parent) = if snapshots.len() == 0 {
+        (String::new(), String::new())
+    } else {
+        target
+            .modify_tag(
                 snapshots.first().unwrap().id.clone(),
                 HeadTag::own().to_string(),
                 true,
             )
             .unwrap()
-        };
+    };
 
-        log::info!("Found parent {parent}");
+    log::info!("Found parent {parent}");
 
-        // TODO : test tagging while creation, avoiding double rename, etc
+    // TODO : test tagging while creation, avoiding double rename, etc
 
-        cmd_args.tag.push(HeadTag::own().to_string());
-        cmd_args.tag.push(format!("parent:{parent}"));
+    cmd_args.tag.push(HeadTag::own().to_string());
+    cmd_args.tag.push(format!("parent:{parent}"));
 
-        let cmd = ResticBackupCommand::new(cmd_args);
-        let res = cmd.run(Some(&env));
+    let cmd = ResticBackupCommand::new(cmd_args);
+    let res = cmd.run(Some(&env));
 
-        match res {
-            Ok(out) => {
-                let stdout = out.stdout_str().unwrap();
-                for line in stdout.lines() {
-                    let x: ResticMsgType = facet_json::from_str(line).into_diagnostic().unwrap();
-                    if let ResticMsgType::Summary(summary) = x {}
+    match res {
+        Ok(out) => {
+            let stdout = out.stdout_str().unwrap();
+            for line in stdout.lines() {
+                let x: ResticMsgType = facet_json::from_str(line).into_diagnostic().unwrap();
+                if let ResticMsgType::Summary(summary) = x {
+                    if let Some(home) = &home {
+                        emit_backup_summary(
+                            home,
+                            BackupEmitSummary::new(
+                                target.repo.clone(),
+                                src.clone(),
+                                BackupState::Ok,
+                                summary,
+                            ),
+                        );
+                    }
                 }
-                targets_results.insert(repo.repo.clone(), Ok(()));
             }
-            Err(e) => match e {
-                cmdbind::errors::CommandError::Internal(_) => {
-                    targets_results.insert(repo.repo.clone(), Err(ResticError::Fatal));
-                }
-                cmdbind::errors::CommandError::Output(command_output) => {
-                    let err = ResticError::from_code(command_output.status().unwrap()).unwrap();
-                    targets_results.insert(repo.repo.clone(), Err(err));
-                }
-            },
+            return Ok(());
+        }
+        Err(e) => match e {
+            cmdbind::errors::CommandError::Internal(_) => {
+                return Err(ResticError::Fatal);
+            }
+            cmdbind::errors::CommandError::Output(command_output) => {
+                let err = ResticError::from_code(command_output.status().unwrap()).unwrap();
+                return Err(err);
+            }
+        },
+    }
+}
+
+pub fn ssh_sign(data: &str) -> String {
+    todo!()
+}
+
+#[derive(Facet)]
+pub struct BackupEmitSummary {
+    pub target: String,
+    pub src: Vec<String>,
+    pub status: String,
+    pub summary: Option<ResticSummaryMsg>,
+}
+
+pub enum BackupState {
+    Ok,
+}
+
+impl BackupState {
+    pub fn to_string(&self) -> String {
+        match self {
+            Self::Ok => "OK".to_string(),
         }
     }
+}
 
-    targets_results
+impl BackupEmitSummary {
+    pub fn new(
+        target: String,
+        src: Vec<String>,
+        status: BackupState,
+        summary: ResticSummaryMsg,
+    ) -> Self {
+        Self {
+            target,
+            src,
+            status: status.to_string(),
+            summary: Some(summary),
+        }
+    }
+}
+
+pub fn emit_backup_summary(home: &str, summary: BackupEmitSummary) {
+    let hostname = hostname();
+    let fingerprint = machine_id();
+    let payload = facet_json::to_string(&summary).unwrap();
+    let sig = ssh_sign(&payload);
+    let msg = server::StateMessage {
+        kind: server::MsgKind::Backup,
+        hostname,
+        fingerprint,
+        payload,
+        signature: sig,
+    };
+    post_api(
+        &format!("{home}/emit"),
+        &serde_json::to_string(&msg).unwrap(),
+        None,
+    );
 }
 
 #[derive(Facet, Debug)]
