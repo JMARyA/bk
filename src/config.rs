@@ -5,9 +5,11 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    backup::{cephfs_snap_create, cephfs_snap_remove, ensure_exists},
-    notify::ntfy,
+    cephfs_snap_create, cephfs_snap_remove, ensure_exists,
+    input::LocalPath,
+    notify::{NtfyTarget, ntfy},
     restic::{bind_mount, find_password, umount},
+    rsync::RsyncConfig,
 };
 
 /// Configuration structure for the backup system.
@@ -47,29 +49,6 @@ impl Config {
     pub fn from_path(path: &str) -> Self {
         facet_toml::from_str(&std::fs::read_to_string(path).unwrap()).unwrap()
     }
-}
-
-/// Configuration for an individual rsync job.
-#[derive(Facet, Debug, Clone, Deserialize, Serialize, JsonSchema)]
-#[facet(skip_all_unless_truthy)]
-pub struct RsyncConfig {
-    /// Source path for rsync.
-    pub src: String,
-
-    /// Destination path for rsync.
-    pub dest: String,
-
-    /// List of patterns to exclude from synchronization.
-    pub exclude: Option<Vec<String>>,
-
-    /// Whether to delete files at the destination that are not in the source.
-    pub delete: Option<bool>,
-
-    /// Ensure a specific directory exists before running the rsync job.
-    pub ensure_exists: Option<String>,
-
-    /// Create CephFS snapshot before the rsync job.
-    pub cephfs_snap: Option<bool>,
 }
 
 /// Configuration for a restic target.
@@ -286,144 +265,4 @@ pub struct ResticForgetArgs {
     /// repack packfiles below this size
     #[serde(rename = "repack-smaller-than")]
     pub repack_smaller_than: Option<String>,
-}
-
-// INPUT
-
-/// Local path input
-#[derive(Facet, Debug, Clone, Deserialize, Serialize, JsonSchema)]
-#[facet(skip_all_unless_truthy)]
-pub struct LocalPath {
-    /// The local path
-    pub path: String,
-
-    /// Ensure a specific directory exists before running the backup.
-    pub ensure_exists: Option<bool>,
-
-    /// Create CephFS snapshots before the backup.
-    pub cephfs_snap: Option<bool>,
-
-    /// Bind mount to consistent path after snapshot creation
-    pub same_path: Option<bool>,
-}
-
-pub struct LocalPathRef {
-    pub conf: LocalPath,
-    pub cephfs_snap_name: Option<String>,
-    pub bind_mount_path: Option<String>,
-}
-
-impl LocalPathRef {
-    pub fn from(conf: LocalPath) -> Self {
-        Self {
-            conf,
-            cephfs_snap_name: None,
-            bind_mount_path: None,
-        }
-    }
-
-    pub fn get_target_path(&mut self) -> String {
-        if self.conf.ensure_exists.unwrap_or(true) {
-            ensure_exists(&self.conf.path);
-        }
-
-        if self.conf.cephfs_snap.unwrap_or_default() {
-            let (final_dir, snap_name) = cephfs_snap_create(&self.conf.path);
-            self.cephfs_snap_name = Some(snap_name);
-
-            if self.conf.same_path.unwrap_or_default() {
-                let name = self.conf.path.replace("/", "_");
-                log::info!("Creating consistent path /bk/{}", name);
-                std::fs::create_dir_all(&format!("/bk/{name}")).unwrap();
-                let bind_mount_path = format!("/bk/{name}");
-                bind_mount(&final_dir, &bind_mount_path);
-                self.bind_mount_path = Some(bind_mount_path.clone());
-                return bind_mount_path;
-            } else {
-                return final_dir;
-            }
-        }
-
-        self.conf.path.clone()
-    }
-
-    pub fn cleanup(&self) {
-        if let Some(bmount) = &self.bind_mount_path {
-            log::info!("Cleaning up mount {}", bmount);
-            umount(&bmount);
-        }
-
-        if let Some(snap) = &self.cephfs_snap_name {
-            log::info!(
-                "Cleaning up snapshot {}",
-                format!("{}@{}", self.conf.path, snap)
-            );
-            cephfs_snap_remove(&self.conf.path, &snap);
-        }
-    }
-}
-
-impl Drop for LocalPathRef {
-    fn drop(&mut self) {
-        self.cleanup();
-    }
-}
-
-// Notification
-
-/// Ntfy configuration
-#[derive(Facet, Debug, Clone, Deserialize, Serialize, JsonSchema)]
-#[facet(skip_all_unless_truthy)]
-pub struct NtfyTarget {
-    pub ntfy: Option<NtfyConfiguration>,
-}
-
-impl NtfyTarget {
-    pub fn send_notification(&self, msg: &str) {
-        if let Some(ntfy_conf) = &self.ntfy {
-            ntfy(
-                &ntfy_conf.host,
-                &ntfy_conf.topic,
-                ntfy_conf.auth.clone().map(|x| x.auth()),
-                msg,
-            )
-            .unwrap();
-        }
-    }
-}
-
-/// Ntfy configuration
-#[derive(Facet, Debug, Clone, Deserialize, Serialize, JsonSchema)]
-#[facet(skip_all_unless_truthy)]
-pub struct NtfyConfiguration {
-    pub host: String,
-    pub topic: String,
-    pub auth: Option<NtfyAuth>,
-}
-
-/// Ntfy configuration
-#[derive(Facet, Debug, Clone, Deserialize, Serialize, JsonSchema)]
-#[facet(skip_all_unless_truthy)]
-pub struct NtfyAuth {
-    pub user: String,
-    #[facet(sensitive)]
-    pub pass: Option<String>,
-    pub pass_file: Option<String>,
-}
-
-impl NtfyAuth {
-    pub fn auth(&self) -> (String, String) {
-        let pass = if let Some(pass) = &self.pass {
-            Some(pass.clone())
-        } else if let Some(pass) = &self.pass_file {
-            Some(std::fs::read_to_string(pass).expect("unable to read ntfy passfile"))
-        } else {
-            None
-        };
-
-        (
-            self.user.clone(),
-            pass.expect("neither pass nor passfile provided"),
-        )
-    }
 }

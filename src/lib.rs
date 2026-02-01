@@ -1,10 +1,11 @@
 use yansi::{Color, Paint};
 
-pub mod args;
-pub mod backup;
+pub mod cli;
 pub mod config;
+pub mod input;
 pub mod notify;
 pub mod restic;
+pub mod rsync;
 pub mod server;
 
 pub fn run_command(cmd: &[&str], env: Option<Vec<(String, String)>>) -> (String, String, i32) {
@@ -42,4 +43,60 @@ pub fn run_command(cmd: &[&str], env: Option<Vec<(String, String)>>) -> (String,
     }
 
     (output, stderr, status.status.code().unwrap())
+}
+
+pub fn ensure_exists(dir: &str) {
+    let exists = std::fs::exists(dir).unwrap_or_default();
+    let entries = std::fs::read_dir(dir)
+        .unwrap()
+        .flatten()
+        .collect::<Vec<_>>();
+
+    if !exists || entries.is_empty() {
+        println!(
+            "{} Directory {dir} does not exists",
+            "Error:".paint(Color::Red),
+        );
+        std::process::exit(1);
+    }
+}
+
+pub fn now() -> String {
+    chrono::Utc::now().format("%Y_%m_%d").to_string()
+}
+
+pub fn nowtime() -> String {
+    chrono::Utc::now().format("%Y_%m_%d-%H_%M").to_string()
+}
+
+pub fn cephfs_snap_create(dir: &str) -> (String, String) {
+    let path = std::path::Path::new(dir);
+    let now = now();
+    let snap_name = format!("SNAP_{now}");
+    let snap_dir = path.join(".snap").join(&snap_name);
+
+    log::info!("Creating snapshot {} on {}", snap_name, dir);
+    if std::fs::create_dir(&snap_dir).is_err() {
+        if !std::fs::exists(&snap_dir).unwrap() {
+            log::error!("{} Could not create snapshot", "Error:".paint(Color::Red));
+            std::process::exit(1);
+        }
+    }
+
+    (format!("{}/", snap_dir.to_str().unwrap()), snap_name)
+}
+
+pub fn cephfs_snap_remove(dir: &str, snap: &str) {
+    let path = std::path::Path::new(dir);
+    let snap_dir = path.join(".snap").join(snap);
+
+    log::info!("Removing snapshot {} on {}", snap, dir);
+    std::fs::remove_dir(snap_dir).unwrap()
+}
+
+pub fn cephfs_snap_remove_dir(dir: &str) {
+    let path = std::path::Path::new(dir);
+
+    log::info!("Removing snapshot {}", path.to_str().unwrap());
+    std::fs::remove_dir(path).unwrap()
 }

@@ -1,15 +1,28 @@
-use axum::{Json, Router};
+use argh::FromArgs;
+use axum::{Json, Router, extract::State, routing::post};
+use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use sqlx::{PgPool, postgres::PgPoolOptions};
+
+#[derive(FromArgs, PartialEq, Debug)]
+/// Serve the server
+#[argh(subcommand, name = "serve")]
+pub struct ServeCommand {
+    #[argh(positional)]
+    /// config file
+    pub config: String,
+}
+
+impl ServeCommand {
+    pub fn run(&self) {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(serve());
+    }
+}
 
 #[derive(Clone)]
 pub struct AppState {
     db: PgPool,
-}
-
-pub fn server() {
-    let rt = tokio::runtime::Runtime::new().unwrap();
-    rt.block_on(serve());
 }
 
 async fn serve() {

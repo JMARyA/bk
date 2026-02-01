@@ -35,4 +35,3 @@ facet-toml = "0.42.0"
 sqlx = { version = "0.8.6", features = ["postgres"] }
 tokio = "1.49.0"
 axum = "0.8.8"
-

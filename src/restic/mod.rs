@@ -18,7 +18,8 @@ use miette::{IntoDiagnostic, Result};
 use yansi::{Color, Paint};
 
 use crate::{
-    config::{LocalPath, LocalPathRef, ResticConfig, ResticForget, ResticForgetArgs, ResticTarget},
+    config::{ResticConfig, ResticForget, ResticForgetArgs, ResticTarget},
+    input::{LocalPath, LocalPathRef},
     run_command,
 };
 
