@@ -1,0 +1,18 @@
+home = "http://bk-server:8080"
+
+[path.my_files]
+path = "/home/user/documents"
+
+[restic_target.my_repo]
+repo = "sftp:user@backuphost:/srv/restic/my_repo"
+passphrase = "changeme"
+
+[[restic]]
+targets = ["my_repo"]
+src = ["my_files"]
+
+[[restic_forget]]
+targets = ["my_repo"]
+keep-last = 7
+keep-weekly = 4
+keep-monthly = 6

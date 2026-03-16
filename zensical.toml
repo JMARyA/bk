@@ -1,0 +1,57 @@
+[project]
+site_name = "Bk"
+site_description = "🍔 backup utility"
+site_author = "JMARyA"
+repo_url = "https://git.hydrar.de/jmarya/bk"
+
+nav = [
+  { "Home" = "README.md" },
+  { "Server" = "server.md" },
+  { "Config Reference" = [
+    "config/config.md",
+    { "Inputs" = [
+    "config/config-path.md",
+    ]},
+    { "Targets" = [
+    "config/config-restic-target.md",
+    ]},
+    { "Operations" = [
+    "config/config-restic-backup.md",
+    "config/config-restic-forget.md",
+    "config/config-rsync.md",
+    ]},
+    "config/notifications.md"
+  ] },
+]
+
+[project.theme]
+language = "en"
+
+features = [
+  "announce.dismiss",
+  "content.code.annotate",
+  "content.code.copy",
+  "content.code.select",
+  "content.footnote.tooltips",
+  "content.tabs.link",
+  "content.tooltips",
+  "navigation.footer",
+  "navigation.indexes",
+  "navigation.instant",
+  "navigation.instant.prefetch",
+  "navigation.path",
+  "navigation.sections",
+  "navigation.top",
+  "navigation.tracking",
+  "search.highlight",
+]
+
+[[project.theme.palette]]
+scheme = "default"
+toggle.icon = "lucide/sun"
+toggle.name = "Switch to dark mode"
+
+[[project.theme.palette]]
+scheme = "slate"
+toggle.icon = "lucide/moon"
+toggle.name = "Switch to light mode"

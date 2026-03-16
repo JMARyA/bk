@@ -18,7 +18,7 @@
       ...
     }@inputs:
     {
-      
+
       nixosModules.bk = import ./nixos/modules/bk.nix;
 
       lib = import ./nixos/lib.nix;
@@ -28,10 +28,20 @@
       system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
+        inherit (pkgs) lib;
         craneLib = crane.mkLib pkgs;
 
+        unfilteredRoot = ./.;
+        src = lib.fileset.toSource {
+          root = unfilteredRoot;
+          fileset = lib.fileset.unions [
+            (craneLib.fileset.commonCargoSources unfilteredRoot)
+            ./migrations
+          ];
+        };
+
         commonArgs = {
-          src = craneLib.cleanCargoSource ./.;
+          inherit src;
           strictDeps = true;
 
           OPENSSL_NO_VENDOR = "1";
@@ -104,6 +114,10 @@
         devShells.default = craneLib.devShell {
           # Inherit inputs from checks.
           checks = self.checks.${system};
+
+          shellHook = ''
+            export DATABASE_URL="postgres://bk:password@127.0.0.1:5432/bk"
+          '';
 
           # Additional dev-shell environment variables can be set directly
           # MY_CUSTOM_DEVELOPMENT_VAR = "something else";

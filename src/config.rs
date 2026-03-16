@@ -1,17 +1,18 @@
 use std::collections::HashMap;
 
+use facet::Facet;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    backup::{cephfs_snap_create, cephfs_snap_remove, ensure_exists},
-    notify::ntfy,
-    restic::{bind_mount, find_password, umount},
-};
+use crate::{input::LocalPath, notify::NtfyTarget, restic::find_password, rsync::RsyncConfig};
 
 /// Configuration structure for the backup system.
-#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[derive(Facet, Debug, Clone, Default, Deserialize, Serialize, JsonSchema)]
+#[facet(skip_all_unless_truthy)]
 pub struct Config {
+    /// Other TOML config files to merge into this one (paths relative to this file, or absolute).
+    pub imports: Option<Vec<String>>,
+
     /// Optional script to run before starting the backup process.
     pub start_script: Option<String>,
 
@@ -20,6 +21,9 @@ pub struct Config {
 
     /// Optional Max Jitter Delay in seconds. Randomized wait time to evenly distribute backups if started via exact cron for example
     pub delay: Option<u64>,
+
+    /// Home Server
+    pub home: Option<String>,
 
     // CDRs
     /// Local path inputs
@@ -41,36 +45,81 @@ pub struct Config {
     pub ntfy: Option<HashMap<String, NtfyTarget>>,
 }
 
-impl Config {
-    pub fn from_path(path: &str) -> Self {
-        toml::from_str(&std::fs::read_to_string(path).unwrap()).unwrap()
+fn merge_map<K: std::hash::Hash + Eq, V>(
+    base: Option<HashMap<K, V>>,
+    overlay: Option<HashMap<K, V>>,
+) -> Option<HashMap<K, V>> {
+    match (base, overlay) {
+        (None, None) => None,
+        (Some(b), None) => Some(b),
+        (None, Some(o)) => Some(o),
+        (Some(mut b), Some(o)) => { b.extend(o); Some(b) }
     }
 }
 
-/// Configuration for an individual rsync job.
-#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
-pub struct RsyncConfig {
-    /// Source path for rsync.
-    pub src: String,
+fn merge_vec<T>(base: Option<Vec<T>>, overlay: Option<Vec<T>>) -> Option<Vec<T>> {
+    match (base, overlay) {
+        (None, None) => None,
+        (Some(b), None) => Some(b),
+        (None, Some(o)) => Some(o),
+        (Some(mut b), Some(o)) => { b.extend(o); Some(b) }
+    }
+}
 
-    /// Destination path for rsync.
-    pub dest: String,
+impl Config {
+    /// Load a config file, recursively resolving and merging any `imports`.
+    pub fn from_path(path: &str) -> Self {
+        let abs = std::fs::canonicalize(path)
+            .unwrap_or_else(|_| std::path::PathBuf::from(path));
+        let base_dir = abs.parent()
+            .unwrap_or(std::path::Path::new("."))
+            .to_path_buf();
 
-    /// List of patterns to exclude from synchronization.
-    pub exclude: Option<Vec<String>>,
+        let content = std::fs::read_to_string(&abs)
+            .unwrap_or_else(|e| panic!("cannot read config {}: {e}", abs.display()));
+        let mut current: Config = toml::from_str(&content)
+            .unwrap_or_else(|e| panic!("cannot parse config {}: {e}", abs.display()));
 
-    /// Whether to delete files at the destination that are not in the source.
-    pub delete: Option<bool>,
+        let imports = current.imports.take().unwrap_or_default();
+        if imports.is_empty() {
+            return current;
+        }
 
-    /// Ensure a specific directory exists before running the rsync job.
-    pub ensure_exists: Option<String>,
+        // Load imports in order and fold them into a base
+        let base = imports.iter().fold(Config::default(), |acc, imp| {
+            let imp_path = if std::path::Path::new(imp).is_absolute() {
+                imp.clone()
+            } else {
+                base_dir.join(imp).to_string_lossy().to_string()
+            };
+            Config::merge(acc, Config::from_path(&imp_path))
+        });
 
-    /// Create CephFS snapshot before the rsync job.
-    pub cephfs_snap: Option<bool>,
+        // Current file overlays on top of merged imports
+        Config::merge(base, current)
+    }
+
+    /// Merge two configs: overlay scalars win, collections are concatenated.
+    fn merge(base: Self, overlay: Self) -> Self {
+        Self {
+            imports: None,
+            start_script: overlay.start_script.or(base.start_script),
+            end_script:   overlay.end_script.or(base.end_script),
+            delay:        overlay.delay.or(base.delay),
+            home:         overlay.home.or(base.home),
+            path:         merge_map(base.path, overlay.path),
+            rsync:        merge_vec(base.rsync, overlay.rsync),
+            restic_target: merge_map(base.restic_target, overlay.restic_target),
+            restic:       merge_vec(base.restic, overlay.restic),
+            restic_forget: merge_vec(base.restic_forget, overlay.restic_forget),
+            ntfy:         merge_map(base.ntfy, overlay.ntfy),
+        }
+    }
 }
 
 /// Configuration for a restic target.
-#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[derive(Facet, Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[facet(skip_all_unless_truthy)]
 pub struct ResticTarget {
     /// Restic repository URL.
     pub repo: String,
@@ -82,6 +131,7 @@ pub struct ResticTarget {
     pub ssh: Option<SSHOptions>,
 
     /// Optional passphrase for the repository.
+    #[facet(sensitive)]
     pub passphrase: Option<String>,
 
     /// Read passphrase from file
@@ -89,9 +139,11 @@ pub struct ResticTarget {
 }
 
 /// S3 Credentials
-#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[derive(Facet, Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[facet(skip_all_unless_truthy)]
 pub struct S3Creds {
     pub access_key: Option<String>,
+    #[facet(sensitive)]
     pub secret_key: Option<String>,
     pub access_key_file: Option<String>,
     pub secret_key_file: Option<String>,
@@ -108,20 +160,35 @@ impl S3Creds {
 }
 
 /// SSH Options
-#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[derive(Facet, Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[facet(skip_all_unless_truthy)]
 pub struct SSHOptions {
     pub port: Option<u16>,
     pub identity: String,
 }
 
 /// Configuration for an individual restic backup job.
-#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[derive(Facet, Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[facet(skip_all_unless_truthy)]
 pub struct ResticConfig {
     /// Notifications
     pub ntfy: Option<Vec<String>>,
 
     /// Restic targets
     pub targets: Vec<String>,
+
+    #[facet(flatten)]
+    #[serde(flatten)]
+    pub options: ResticBackupConfig,
+}
+
+#[derive(Facet, Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[facet(skip_all_unless_truthy)]
+pub struct ResticBackupConfig {
+    /// The target
+    #[facet(default)]
+    #[serde(default)]
+    pub target: String,
 
     /// List of source paths to include in the backup.
     pub src: Vec<String>,
@@ -156,8 +223,10 @@ pub struct ResticConfig {
     /// Host override
     pub host: Option<String>,
 }
+
 /// Configuration for an individual restic forget job.
-#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[derive(Facet, Debug, Clone, Deserialize, Serialize, JsonSchema)]
+#[facet(skip_all_unless_truthy)]
 pub struct ResticForget {
     /// Notifications (e.g. ntfy topics to notify after job)
     pub ntfy: Option<Vec<String>>,
@@ -165,46 +234,74 @@ pub struct ResticForget {
     /// Restic repository targets
     pub targets: Vec<String>,
 
+    #[serde(flatten)]
+    pub args: ResticForgetArgs,
+}
+
+#[derive(Facet, Debug, Clone, Default, Deserialize, Serialize, JsonSchema)]
+#[facet(skip_all_unless_truthy)]
+#[serde(default)]
+pub struct ResticForgetArgs {
+    #[serde(rename = "dry-run")]
+    pub dry_run: bool,
+    pub repo: Option<String>,
+
+    pub option: Option<Vec<String>>,
+
     /// keep the last n snapshots (use "unlimited" to keep all)
+    #[serde(rename = "keep-last")]
     pub keep_last: Option<u64>,
 
     /// keep the last n hourly snapshots
+    #[serde(rename = "keep-hourly")]
     pub keep_hourly: Option<u64>,
 
     /// keep the last n daily snapshots
+    #[serde(rename = "keep-daily")]
     pub keep_daily: Option<u64>,
 
     /// keep the last n weekly snapshots
+    #[serde(rename = "keep-weekly")]
     pub keep_weekly: Option<u64>,
 
     /// keep the last n monthly snapshots
+    #[serde(rename = "keep-monthly")]
     pub keep_monthly: Option<u64>,
 
     /// keep the last n yearly snapshots
+    #[serde(rename = "keep-yearly")]
     pub keep_yearly: Option<u64>,
 
     /// keep snapshots newer than this duration (e.g. "1y5m7d2h")
+    #[serde(rename = "keep-within")]
     pub keep_within: Option<u64>,
 
     /// keep hourly snapshots newer than this duration
+    #[serde(rename = "keep-within-hourly")]
     pub keep_within_hourly: Option<u64>,
 
     /// keep daily snapshots newer than this duration
+    #[serde(rename = "keep-within-daily")]
     pub keep_within_daily: Option<u64>,
 
     /// keep weekly snapshots newer than this duration
+    #[serde(rename = "keep-within-weekly")]
     pub keep_within_weekly: Option<u64>,
 
     /// keep monthly snapshots newer than this duration
+    #[serde(rename = "keep-within-monthly")]
     pub keep_within_monthly: Option<u64>,
 
     /// keep yearly snapshots newer than this duration
+    #[serde(rename = "keep-within-yearly")]
     pub keep_within_yearly: Option<u64>,
 
     /// keep snapshots with these tags
+    #[serde(rename = "keep-tag")]
     pub keep_tag: Option<Vec<String>>,
 
     /// allow deleting all snapshots of a snapshot group
+    #[serde(rename = "unsafe-allow-remove-all")]
     pub unsafe_allow_remove_all: Option<bool>,
 
     /// only consider snapshots for this host
@@ -220,161 +317,33 @@ pub struct ResticForget {
     pub compact: Option<bool>,
 
     /// group snapshots by host, paths, and/or tags (disable grouping with "")
+    #[serde(rename = "group-by")]
     pub group_by: Option<String>,
 
     /// automatically run 'prune' if snapshots were removed
     pub prune: Option<bool>,
 
     /// tolerate this amount of unused data (default "5%")
+    #[serde(rename = "max-unused")]
     pub max_unused: Option<String>,
 
     /// stop after repacking this much data
+    #[serde(rename = "max-repack-size")]
     pub max_repack_size: Option<String>,
 
     /// only repack packs which are cacheable
+    #[serde(rename = "repack-cacheable-only")]
     pub repack_cacheable_only: Option<bool>,
 
     /// repack pack files below 80% of target pack size
+    #[serde(rename = "repack-small")]
     pub repack_small: Option<bool>,
 
     /// repack all uncompressed data
+    #[serde(rename = "repack-uncompressed")]
     pub repack_uncompressed: Option<bool>,
 
     /// repack packfiles below this size
+    #[serde(rename = "repack-smaller-than")]
     pub repack_smaller_than: Option<String>,
-}
-
-// INPUT
-
-/// Local path input
-#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
-pub struct LocalPath {
-    /// The local path
-    pub path: String,
-
-    /// Ensure a specific directory exists before running the backup.
-    pub ensure_exists: Option<bool>,
-
-    /// Create CephFS snapshots before the backup.
-    pub cephfs_snap: Option<bool>,
-
-    /// Bind mount to consistent path after snapshot creation
-    pub same_path: Option<bool>,
-}
-
-pub struct LocalPathRef {
-    pub conf: LocalPath,
-    pub cephfs_snap_name: Option<String>,
-    pub bind_mount_path: Option<String>,
-}
-
-impl LocalPathRef {
-    pub fn from(conf: LocalPath) -> Self {
-        Self {
-            conf,
-            cephfs_snap_name: None,
-            bind_mount_path: None,
-        }
-    }
-
-    pub fn get_target_path(&mut self) -> String {
-        if self.conf.ensure_exists.unwrap_or(true) {
-            ensure_exists(&self.conf.path);
-        }
-
-        if self.conf.cephfs_snap.unwrap_or_default() {
-            let (final_dir, snap_name) = cephfs_snap_create(&self.conf.path);
-            self.cephfs_snap_name = Some(snap_name);
-
-            if self.conf.same_path.unwrap_or_default() {
-                let name = self.conf.path.replace("/", "_");
-                log::info!("Creating consistent path /bk/{}", name);
-                std::fs::create_dir_all(&format!("/bk/{name}")).unwrap();
-                let bind_mount_path = format!("/bk/{name}");
-                bind_mount(&final_dir, &bind_mount_path);
-                self.bind_mount_path = Some(bind_mount_path.clone());
-                return bind_mount_path;
-            } else {
-                return final_dir;
-            }
-        }
-
-        self.conf.path.clone()
-    }
-
-    pub fn cleanup(&self) {
-        if let Some(bmount) = &self.bind_mount_path {
-            log::info!("Cleaning up mount {}", bmount);
-            umount(&bmount);
-        }
-
-        if let Some(snap) = &self.cephfs_snap_name {
-            log::info!(
-                "Cleaning up snapshot {}",
-                format!("{}@{}", self.conf.path, snap)
-            );
-            cephfs_snap_remove(&self.conf.path, &snap);
-        }
-    }
-}
-
-impl Drop for LocalPathRef {
-    fn drop(&mut self) {
-        self.cleanup();
-    }
-}
-
-// Notification
-
-/// Ntfy configuration
-#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
-pub struct NtfyTarget {
-    pub ntfy: Option<NtfyConfiguration>,
-}
-
-impl NtfyTarget {
-    pub fn send_notification(&self, msg: &str) {
-        if let Some(ntfy_conf) = &self.ntfy {
-            ntfy(
-                &ntfy_conf.host,
-                &ntfy_conf.topic,
-                ntfy_conf.auth.clone().map(|x| x.auth()),
-                msg,
-            )
-            .unwrap();
-        }
-    }
-}
-
-/// Ntfy configuration
-#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
-pub struct NtfyConfiguration {
-    pub host: String,
-    pub topic: String,
-    pub auth: Option<NtfyAuth>,
-}
-
-/// Ntfy configuration
-#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
-pub struct NtfyAuth {
-    pub user: String,
-    pub pass: Option<String>,
-    pub pass_file: Option<String>,
-}
-
-impl NtfyAuth {
-    pub fn auth(&self) -> (String, String) {
-        let pass = if let Some(pass) = &self.pass {
-            Some(pass.clone())
-        } else if let Some(pass) = &self.pass_file {
-            Some(std::fs::read_to_string(pass).expect("unable to read ntfy passfile"))
-        } else {
-            None
-        };
-
-        (
-            self.user.clone(),
-            pass.expect("neither pass nor passfile provided"),
-        )
-    }
 }

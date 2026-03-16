@@ -1,0 +1,1 @@
+ALTER TABLE forget_events ADD COLUMN status TEXT NOT NULL DEFAULT 'ok';
