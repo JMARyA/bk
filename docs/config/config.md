@@ -39,6 +39,7 @@ These can be divided into the following categories:
 
 ### Inputs
 - [Path](./config-path.md)
+- [S3 Input](./config-s3-input.md)
 
 ### Targets
 - [Restic](./config-restic-target.md)

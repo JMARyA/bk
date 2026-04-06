@@ -77,6 +77,7 @@
             pkgs.restic
             pkgs.rsync
             pkgs.openssh
+            pkgs.geesefs
             pkgs.coreutils
             pkgs.util-linux
             pkgs.bash

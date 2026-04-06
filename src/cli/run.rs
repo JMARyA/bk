@@ -1,6 +1,26 @@
 use argh::FromArgs;
+use yansi::{Color, Paint};
 
 use crate::{config::Config, restic, run_command};
+
+fn require_binary(name: &str) {
+    if std::process::Command::new("which")
+        .arg(name)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false)
+    {
+        return;
+    }
+    eprintln!(
+        "{} required binary {} not found in PATH",
+        "Error:".paint(Color::Red).bold(),
+        name.paint(Color::Yellow),
+    );
+    std::process::exit(1);
+}
 
 #[derive(FromArgs, PartialEq, Debug, Default)]
 /// Run config
@@ -65,6 +85,19 @@ impl RunCommand {
         let conf = Config::from_path(&self.config);
         let mut state = 0;
 
+        // Fail fast if required binaries are missing.
+        if conf.restic.as_ref().map(|v| !v.is_empty()).unwrap_or(false)
+            || conf.restic_forget.as_ref().map(|v| !v.is_empty()).unwrap_or(false)
+        {
+            require_binary("restic");
+        }
+        if conf.rsync.as_ref().map(|v| !v.is_empty()).unwrap_or(false) {
+            require_binary("rsync");
+        }
+        if conf.s3_input.as_ref().map(|v| !v.is_empty()).unwrap_or(false) {
+            require_binary("geesefs");
+        }
+
         if self.dry_run {
             log::warn!("Running in dry run mode. No backup jobs will happen.");
         }
@@ -103,6 +136,7 @@ impl RunCommand {
                 let res = restic::create_archive(
                     restic,
                     conf.path.clone().unwrap_or_default(),
+                    conf.s3_input.clone().unwrap_or_default(),
                     conf.restic_target.clone().unwrap_or_default(),
                     self.dry_run,
                     conf.home.clone(),

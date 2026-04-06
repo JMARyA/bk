@@ -11,8 +11,8 @@ pub struct Snapshot {
     pub hostname: String,
     pub username: String,
     pub parent: Option<String>,
-    pub uid: i64,
-    pub gid: i64,
+    pub uid: Option<i64>,
+    pub gid: Option<i64>,
     #[facet(default)]
     pub tags: Vec<String>,
     pub original: Option<String>,

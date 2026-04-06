@@ -49,6 +49,7 @@ let
 
   commonPath = with pkgs; [
     restic
+    geesefs
     util-linux
     coreutils
   ];

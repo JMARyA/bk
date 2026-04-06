@@ -18,7 +18,7 @@ use yansi::{Color, Paint};
 
 use crate::{
     config::{ResticBackupConfig, ResticConfig, ResticForget, ResticForgetArgs, ResticTarget},
-    input::{LocalPath, LocalPathRef},
+    input::{InputRef, LocalPath, LocalPathRef, S3Input, S3InputRef},
     notify::post_api,
     run_command, server,
 };
@@ -187,7 +187,10 @@ impl ResticTarget {
         .unwrap();
 
         let x = x.stdout_str().unwrap();
-        Ok(facet_json::from_str(&x).unwrap())
+        facet_json::from_str(&x).map_err(|e| {
+            log::error!("failed to parse restic snapshots output: {e}");
+            ResticError::Fatal
+        })
     }
 }
 
@@ -229,18 +232,20 @@ pub fn machine_id() -> String {
 pub fn create_archive(
     conf: &ResticConfig,
     path_provider: HashMap<String, LocalPath>,
+    s3_input_provider: HashMap<String, S3Input>,
     target_provider: HashMap<String, ResticTarget>,
     dry: bool,
     home: Option<String>,
 ) -> HashMap<String, Result<(), ResticError>> {
-    let mut paths: Vec<_> = conf
+    let mut paths: Vec<InputRef> = conf
         .options
         .src
         .iter()
         .map(|x| {
             if let Some(pp) = path_provider.get(x) {
-                let pp = LocalPathRef::from(pp.clone());
-                return pp;
+                InputRef::Local(LocalPathRef::from(pp.clone()))
+            } else if let Some(s3) = s3_input_provider.get(x) {
+                InputRef::S3(S3InputRef::new(x, s3.clone()))
             } else {
                 log::error!("Unknown path provider {x}");
                 std::process::exit(1);

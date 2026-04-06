@@ -4,7 +4,7 @@ use facet::Facet;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::{input::LocalPath, notify::NtfyTarget, restic::find_password, rsync::RsyncConfig};
+use crate::{input::{LocalPath, S3Input}, notify::NtfyTarget, restic::find_password, rsync::RsyncConfig};
 
 /// Configuration structure for the backup system.
 #[derive(Facet, Debug, Clone, Default, Deserialize, Serialize, JsonSchema)]
@@ -43,6 +43,9 @@ pub struct Config {
 
     /// Ntfy targets
     pub ntfy: Option<HashMap<String, NtfyTarget>>,
+
+    /// S3 bucket inputs (mounted via geesefs for backup).
+    pub s3_input: Option<HashMap<String, S3Input>>,
 }
 
 fn merge_map<K: std::hash::Hash + Eq, V>(
@@ -113,6 +116,7 @@ impl Config {
             restic:       merge_vec(base.restic, overlay.restic),
             restic_forget: merge_vec(base.restic_forget, overlay.restic_forget),
             ntfy:         merge_map(base.ntfy, overlay.ntfy),
+            s3_input:     merge_map(base.s3_input, overlay.s3_input),
         }
     }
 }
