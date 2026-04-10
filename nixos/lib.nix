@@ -50,6 +50,7 @@
         restic = a.restic ++ b.restic or [ ];
         ntfy = a.ntfy // b.ntfy or { };
         restic_forget = a.restic_forget ++ b.restic_forget or [ ];
+        s3_input = a.s3_input // b.s3_input or { };
       }))
       {
         restic_target = { };
@@ -57,6 +58,7 @@
         restic = [ ];
         ntfy = { };
         restic_forget = [ ];
+        s3_input = { };
       }
       lst;
 }
