@@ -187,7 +187,7 @@ impl S3InputRef {
             cmd.env("AWS_REGION", region);
         }
 
-        cmd.arg("--read-only").arg(&self.conf.bucket).arg(&self.mount_path);
+        cmd.arg("-o").arg("ro").arg(&self.conf.bucket).arg(&self.mount_path);
 
         let status = cmd.status().unwrap_or_else(|e| {
             log::error!("failed to run geesefs: {e}");
