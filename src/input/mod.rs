@@ -119,6 +119,14 @@ pub struct S3Input {
 
     /// Read secret access key from a file.
     pub secret_key_file: Option<String>,
+
+    /// Memory limit in MB for geesefs data cache (maps to --memory-limit).
+    /// Increase for large files to reduce re-fetching. Defaults to 2000.
+    pub memory_limit: Option<u64>,
+
+    /// Readahead size in KB for large sequential reads (maps to --read-ahead-large).
+    /// Defaults to 204800 (200 MiB).
+    pub read_ahead_large: Option<u64>,
 }
 
 impl S3Input {
@@ -186,6 +194,12 @@ impl S3InputRef {
         if let Some(region) = &self.conf.region {
             cmd.env("AWS_REGION", region);
         }
+
+        let memory_limit = self.conf.memory_limit.unwrap_or(2000);
+        cmd.arg("--memory-limit").arg(memory_limit.to_string());
+
+        let read_ahead_large = self.conf.read_ahead_large.unwrap_or(204800);
+        cmd.arg("--read-ahead-large").arg(read_ahead_large.to_string());
 
         cmd.arg("-o").arg("ro").arg(&self.conf.bucket).arg(&self.mount_path);
 

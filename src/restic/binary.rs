@@ -54,7 +54,7 @@ impl ResticBackupCommandArgs {
             exclude: conf.exclude,
             exclude_if_present: conf.exclude_if_present,
             one_file_system: conf.one_file_system.unwrap_or_default(),
-            read_concurrency: conf.concurrency.unwrap_or(2),
+            read_concurrency: conf.concurrency.unwrap_or(4),
             tag: conf.tags.unwrap_or_default(),
             reread: conf.reread.unwrap_or_default(),
             exclude_caches: conf.exclude_caches.unwrap_or_default(),
