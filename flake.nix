@@ -96,7 +96,7 @@
             echo "root:x:0:0:root:/root:/bin/sh" > /etc/passwd
             echo "root:x:0:" > /etc/group
             mkdir -p /etc/ssh
-            ssh-keygen -t ed25519 -f /etc/ssh/ssh_host_ed25519_key -N "" -q
+            ${pkgs.openssh}/bin/ssh-keygen -t ed25519 -f /etc/ssh/ssh_host_ed25519_key -N "" -q
           '';
 
           enableFakechroot = true;
