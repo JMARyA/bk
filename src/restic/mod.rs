@@ -227,12 +227,27 @@ pub fn hostname() -> String {
 /// get the id of the machine.
 /// This is the sha256 fingerprint of the ssh host key
 pub fn machine_id() -> String {
-    let key_data = match std::fs::read_to_string("/etc/ssh/ssh_host_ed25519_key.pub") {
+    let key_path = "/etc/ssh/ssh_host_ed25519_key.pub";
+    let key_data = match std::fs::read_to_string(key_path) {
         Ok(d) => d,
         Err(e) => {
-            log::warn!("could not read ssh host key for machine_id: {e}");
+            log::debug!("could not read ssh host key for machine_id: {e}");
             return String::new();
         }
+    };
+    let public_key = match ssh_key::PublicKey::from_openssh(&key_data) {
+        Ok(k) => k,
+        Err(e) => {
+            log::warn!("could not parse ssh host key for machine_id: {e}");
+            return String::new();
+        }
+    };
+    let fingerprint = public_key.fingerprint(Default::default());
+    fingerprint
+        .to_string()
+        .trim_start_matches(&format!("{}:", fingerprint.prefix()))
+        .to_string()
+}
     };
     let public_key = match ssh_key::PublicKey::from_openssh(&key_data) {
         Ok(k) => k,
