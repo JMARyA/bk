@@ -8,8 +8,8 @@ use error::*;
 pub use snapshot::*;
 
 use cmdbind::{
-    CommandEnvironment, RunnableCommand, errors::FromExitCode, validators::non_zero_only,
-    wrap_binary,
+    errors::FromExitCode, validators::non_zero_only, wrap_binary, CommandEnvironment,
+    RunnableCommand,
 };
 
 use facet::Facet;
@@ -121,7 +121,10 @@ impl ResticTarget {
             let (user, host) = match hostpart.split_once('@') {
                 Some(p) => p,
                 None => {
-                    log::error!("malformed SFTP repo URL (expected user@host): {}", self.repo);
+                    log::error!(
+                        "malformed SFTP repo URL (expected user@host): {}",
+                        self.repo
+                    );
                     return Err(ResticError::Fatal);
                 }
             };
@@ -202,13 +205,23 @@ pub struct HostnameArgs {}
 wrap_binary!(HostnameCmd, "hostname", HostnameArgs, non_zero_only);
 
 pub fn hostname() -> String {
-    HostnameCmd::new(HostnameArgs {})
-        .run(None)
-        .unwrap()
-        .stdout_str()
-        .unwrap()
-        .trim()
-        .to_string()
+    // Use libc::gethostname to avoid depending on the external `hostname` binary,
+    // which may not be present in minimal containers.
+    let mut buf = [0u8; 256];
+    let ret = unsafe { libc::gethostname(buf.as_mut_ptr() as *mut libc::c_char, buf.len()) };
+    if ret == 0 {
+        let len = buf.iter().position(|&b| b == 0).unwrap_or(buf.len());
+        if len > 0 {
+            return String::from_utf8_lossy(&buf[..len]).trim().to_string();
+        }
+    }
+    // Fallback: try /etc/hostname
+    std::fs::read_to_string("/etc/hostname")
+        .map(|s| s.trim().to_string())
+        .unwrap_or_else(|_| {
+            log::warn!("could not determine hostname via libc or /etc/hostname");
+            "unknown".to_string()
+        })
 }
 
 /// get the id of the machine.
@@ -216,11 +229,17 @@ pub fn hostname() -> String {
 pub fn machine_id() -> String {
     let key_data = match std::fs::read_to_string("/etc/ssh/ssh_host_ed25519_key.pub") {
         Ok(d) => d,
-        Err(e) => { log::warn!("could not read ssh host key for machine_id: {e}"); return String::new(); }
+        Err(e) => {
+            log::warn!("could not read ssh host key for machine_id: {e}");
+            return String::new();
+        }
     };
     let public_key = match ssh_key::PublicKey::from_openssh(&key_data) {
         Ok(k) => k,
-        Err(e) => { log::warn!("could not parse ssh host key for machine_id: {e}"); return String::new(); }
+        Err(e) => {
+            log::warn!("could not parse ssh host key for machine_id: {e}");
+            return String::new();
+        }
     };
     let fingerprint = public_key.fingerprint(Default::default());
     fingerprint
@@ -328,12 +347,15 @@ pub fn create_archive_target(
         }
         Err(e) => {
             if let Some(home) = &home {
-                emit_backup_summary(home, BackupEmitSummary {
-                    target: target.repo.clone(),
-                    src: src.clone(),
-                    status: BackupState::Error.to_string(),
-                    summary: None,
-                });
+                emit_backup_summary(
+                    home,
+                    BackupEmitSummary {
+                        target: target.repo.clone(),
+                        src: src.clone(),
+                        status: BackupState::Error.to_string(),
+                        summary: None,
+                    },
+                );
             }
             Err(e)
         }
@@ -718,7 +740,11 @@ impl BackupEmitSummary {
     }
 }
 
-fn make_signed_msg(kind: server::MsgKind, payload: String, public_key: &str) -> Option<server::StateMessage> {
+fn make_signed_msg(
+    kind: server::MsgKind,
+    payload: String,
+    public_key: &str,
+) -> Option<server::StateMessage> {
     let sig = ssh_sign(&payload)?;
     Some(server::StateMessage {
         kind,
@@ -733,35 +759,68 @@ fn make_signed_msg(kind: server::MsgKind, payload: String, public_key: &str) -> 
 pub fn emit_backup_summary(home: &str, summary: BackupEmitSummary) {
     let public_key = match std::fs::read_to_string(format!("{}.pub", signing_key_path())) {
         Ok(k) => k.trim().to_string(),
-        Err(e) => { log::warn!("could not read public key for backup emit: {e}"); return; }
+        Err(e) => {
+            log::warn!("could not read public key for backup emit: {e}");
+            return;
+        }
     };
     let payload = facet_json::to_string(&summary).unwrap();
     if let Some(msg) = make_signed_msg(server::MsgKind::Backup, payload, &public_key) {
-        let _ = post_api(&format!("{home}/emit"), &serde_json::to_string(&msg).unwrap(), None);
+        let _ = post_api(
+            &format!("{home}/emit"),
+            &serde_json::to_string(&msg).unwrap(),
+            None,
+        );
     }
 }
 
-pub fn emit_forget_summary(home: &str, target: &str, removed: usize, kept: usize, dry_run: bool, status: &str) {
+pub fn emit_forget_summary(
+    home: &str,
+    target: &str,
+    removed: usize,
+    kept: usize,
+    dry_run: bool,
+    status: &str,
+) {
     let public_key = match std::fs::read_to_string(format!("{}.pub", signing_key_path())) {
         Ok(k) => k.trim().to_string(),
-        Err(e) => { log::warn!("could not read public key for forget emit: {e}"); return; }
+        Err(e) => {
+            log::warn!("could not read public key for forget emit: {e}");
+            return;
+        }
     };
-    let summary = server::ForgetEmitSummary { target: target.to_string(), removed, kept, dry_run, status: status.to_string() };
+    let summary = server::ForgetEmitSummary {
+        target: target.to_string(),
+        removed,
+        kept,
+        dry_run,
+        status: status.to_string(),
+    };
     let payload = serde_json::to_string(&summary).unwrap();
     if let Some(msg) = make_signed_msg(server::MsgKind::Forget, payload, &public_key) {
-        let _ = post_api(&format!("{home}/emit"), &serde_json::to_string(&msg).unwrap(), None);
+        let _ = post_api(
+            &format!("{home}/emit"),
+            &serde_json::to_string(&msg).unwrap(),
+            None,
+        );
     }
 }
 
 pub fn emit_snapshots(home: &str, target: &ResticTarget) {
     let public_key = match std::fs::read_to_string(format!("{}.pub", signing_key_path())) {
         Ok(k) => k.trim().to_string(),
-        Err(e) => { log::warn!("could not read public key for snapshot sync: {e}"); return; }
+        Err(e) => {
+            log::warn!("could not read public key for snapshot sync: {e}");
+            return;
+        }
     };
 
     let envs = match target.env_vars() {
         Ok(e) => e,
-        Err(e) => { log::warn!("could not get env for snapshot sync: {e:?}"); return; }
+        Err(e) => {
+            log::warn!("could not get env for snapshot sync: {e:?}");
+            return;
+        }
     };
 
     let mut args: Vec<std::ffi::OsString> = vec![
@@ -783,39 +842,73 @@ pub fn emit_snapshots(home: &str, target: &ResticTarget) {
     let stdout = match out {
         Ok(o) if o.status.success() => o.stdout,
         Ok(o) => {
-            log::warn!("restic snapshots exited {}: {}", o.status, String::from_utf8_lossy(&o.stderr));
+            log::warn!(
+                "restic snapshots exited {}: {}",
+                o.status,
+                String::from_utf8_lossy(&o.stderr)
+            );
             return;
         }
-        Err(e) => { log::warn!("failed to run restic snapshots: {e}"); return; }
+        Err(e) => {
+            log::warn!("failed to run restic snapshots: {e}");
+            return;
+        }
     };
 
     // Parse just what the server needs (id, short_id, hostname, paths, tags, time, username)
     let raw: serde_json::Value = match serde_json::from_slice(&stdout) {
         Ok(v) => v,
-        Err(e) => { log::warn!("failed to parse snapshots JSON: {e}"); return; }
+        Err(e) => {
+            log::warn!("failed to parse snapshots JSON: {e}");
+            return;
+        }
     };
 
     // Re-serialize as the slim SnapshotEntry list the server expects
-    let entries: Vec<server::SnapshotEntry> = raw.as_array().unwrap_or(&vec![]).iter()
+    let entries: Vec<server::SnapshotEntry> = raw
+        .as_array()
+        .unwrap_or(&vec![])
+        .iter()
         .filter_map(|s| {
             Some(server::SnapshotEntry {
-                id:       s.get("id")?.as_str()?.to_string(),
+                id: s.get("id")?.as_str()?.to_string(),
                 short_id: s.get("short_id")?.as_str()?.to_string(),
-                hostname: s.get("hostname").and_then(|v| v.as_str()).unwrap_or("").to_string(),
-                paths:    s.get("paths")?.as_array()?.iter()
-                            .filter_map(|p| p.as_str().map(str::to_string)).collect(),
-                tags:     s.get("tags").and_then(|t| t.as_array())
-                            .map(|a| a.iter().filter_map(|t| t.as_str().map(str::to_string)).collect())
-                            .unwrap_or_default(),
-                time:     s.get("time")?.as_str()?.to_string(),
-                username: s.get("username").and_then(|v| v.as_str()).map(str::to_string),
+                hostname: s
+                    .get("hostname")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string(),
+                paths: s
+                    .get("paths")?
+                    .as_array()?
+                    .iter()
+                    .filter_map(|p| p.as_str().map(str::to_string))
+                    .collect(),
+                tags: s
+                    .get("tags")
+                    .and_then(|t| t.as_array())
+                    .map(|a| {
+                        a.iter()
+                            .filter_map(|t| t.as_str().map(str::to_string))
+                            .collect()
+                    })
+                    .unwrap_or_default(),
+                time: s.get("time")?.as_str()?.to_string(),
+                username: s
+                    .get("username")
+                    .and_then(|v| v.as_str())
+                    .map(str::to_string),
             })
         })
         .collect();
 
     let payload = serde_json::to_string(&entries).unwrap();
     if let Some(msg) = make_signed_msg(server::MsgKind::Snapshots, payload, &public_key) {
-        let _ = post_api(&format!("{home}/emit"), &serde_json::to_string(&msg).unwrap(), None);
+        let _ = post_api(
+            &format!("{home}/emit"),
+            &serde_json::to_string(&msg).unwrap(),
+            None,
+        );
         log::info!("📸 Synced {} snapshots to server", entries.len());
     }
 }

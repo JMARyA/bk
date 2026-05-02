@@ -1,4 +1,4 @@
-use cmdbind::{CommandOutput, wrap_binary};
+use cmdbind::{wrap_binary, CommandOutput};
 
 use crate::config::ResticBackupConfig;
 
