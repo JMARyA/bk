@@ -5,7 +5,7 @@ use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use sqlx::{PgPool, postgres::PgPoolOptions};
 
-use crate::restic::{BackupEmitSummary, ResticSummaryMsg, hostname, machine_id};
+use crate::restic::{BackupEmitSummary, ResticSummaryMsg};
 
 #[derive(FromArgs, PartialEq, Debug)]
 /// Serve the server
@@ -149,6 +149,8 @@ pub async fn emit_state(
                 &x.src.join(";"),
                 &x.target,
                 &x.status,
+                &body.hostname,
+                &body.fingerprint,
             )
             .await?;
         }
@@ -720,6 +722,8 @@ pub async fn persist_summary_msg(
     src: &str,
     target: &str,
     status: &str,
+    hostname: &str,
+    sshid: &str,
 ) -> Result<(), StatusCode> {
     let m = msg.as_ref();
     sqlx::query(
@@ -770,10 +774,10 @@ pub async fn persist_summary_msg(
     .bind(m.and_then(|m| m.total_duration))
     .bind(m.and_then(|m| m.backup_start))
     .bind(m.and_then(|m| m.backup_end))
-    .bind(m.and_then(|m| m.snapshot_id.clone()))
-    .bind(hostname())
-    .bind(machine_id())
-    .bind(src)
+            .bind(m.and_then(|m| m.snapshot_id.clone()))
+            .bind(hostname)
+            .bind(sshid)
+            .bind(src)
     .bind(target)
     .bind(status)
     .execute(pool)
