@@ -519,7 +519,7 @@ fn run_backup_streaming(
             Ok(ResticMsgType::Summary(s)) => {
                 summary = Some(s);
             }
-            Err(_) => {}
+            Err(e) => log::debug!("failed to parse restic JSON: {e}\n  line: {line}"),
         }
     }
 
@@ -644,7 +644,7 @@ fn run_restore_streaming(
                 last_total_files = s.total_files;
                 last_total_bytes = s.total_bytes;
             }
-            Err(_) => {}
+            Err(e) => log::debug!("failed to parse restic restore JSON: {e}\n  line: {line}"),
         }
     }
 
