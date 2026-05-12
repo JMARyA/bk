@@ -5,5 +5,6 @@ Description=Backup
 Type=simple
 ExecStart=/usr/bin/bk run /etc/bk.toml
 User=root
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
 StandardOutput=journal
 StandardError=journal

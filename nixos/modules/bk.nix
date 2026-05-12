@@ -50,6 +50,8 @@ let
   commonPath = with pkgs; [
     restic
     geesefs
+    openssh
+    rsync
     util-linux
     coreutils
   ];
@@ -57,7 +59,10 @@ let
   commonServiceConfig = {
     Type = "oneshot";
     User = "root";
-    Environment = "HOME=/root";
+    Environment = [
+      "HOME=/root"
+      "PATH=${lib.makeBinPath commonPath}"
+    ];
     StandardOutput = "journal";
     StandardError = "journal";
   };
@@ -141,7 +146,6 @@ in
     systemd.services.bk-backup = {
       description = "bk restic backup";
       after = [ "network.target" ];
-      path = commonPath;
       serviceConfig = commonServiceConfig // {
         ExecStart = "${bkPackage}/bin/bk run -m restic /etc/bk/backup.toml";
       };
@@ -161,7 +165,6 @@ in
     systemd.services.bk-prune = {
       description = "bk restic prune";
       after = [ "network.target" ];
-      path = commonPath;
       serviceConfig = commonServiceConfig // {
         ExecStart = "${bkPackage}/bin/bk run -m restic_forget /etc/bk/prune.toml";
       };

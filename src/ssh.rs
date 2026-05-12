@@ -18,6 +18,16 @@ pub fn ssh_sign(data: &[u8], key_path: &str) -> Option<String> {
         .ok()
 }
 
+fn write_exclusive(path: &str, data: &[u8]) -> std::io::Result<()> {
+    use std::os::unix::fs::OpenOptionsExt;
+    let mut f = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .mode(0o600)
+        .open(path)?;
+    f.write_all(data)
+}
+
 /// Verify that `sig_pem` is a valid OpenSSH signature over `data` made by
 /// the key whose public half is `pub_key_str` (OpenSSH wire format, e.g. `ssh-ed25519 AAAA...`).
 ///
@@ -35,8 +45,9 @@ pub fn ssh_verify(pub_key_str: &str, data: &[u8], sig_pem: &str) -> bool {
     // allowed_signers format: "<principal> <keytype> <base64key>"
     let allowed_signers = format!("bk-host {pub_key_str}\n");
 
-    if std::fs::write(&allowed_signers_path, allowed_signers.as_bytes()).is_err()
-        || std::fs::write(&sig_path, sig_pem.as_bytes()).is_err()
+    // Use write_exclusive (O_CREAT | O_EXCL) to prevent symlink race attacks.
+    if write_exclusive(&allowed_signers_path, allowed_signers.as_bytes()).is_err()
+        || write_exclusive(&sig_path, sig_pem.as_bytes()).is_err()
     {
         let _ = std::fs::remove_file(&allowed_signers_path);
         let _ = std::fs::remove_file(&sig_path);

@@ -49,13 +49,14 @@ pub struct NtfyTarget {
 impl NtfyTarget {
     pub fn send_notification(&self, msg: &str) {
         if let Some(ntfy_conf) = &self.ntfy {
-            ntfy(
+            if let Err(e) = ntfy(
                 &ntfy_conf.host,
                 &ntfy_conf.topic,
                 ntfy_conf.auth.clone().map(|x| x.auth()),
                 msg,
-            )
-            .unwrap();
+            ) {
+                log::error!("failed to send notification: {e}");
+            }
         }
     }
 }

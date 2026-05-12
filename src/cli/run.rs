@@ -4,8 +4,8 @@ use yansi::{Color, Paint};
 use crate::{config::Config, restic, run_command};
 
 fn require_binary(name: &str) {
-    if std::process::Command::new("which")
-        .arg(name)
+    if std::process::Command::new(name)
+        .arg("--version")
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
         .status()

@@ -86,7 +86,7 @@ impl ResticTarget {
         } else if let Some(pass_file) = &self.passphrase_file {
             let passphrase =
                 std::fs::read_to_string(pass_file).expect("Could not read passphrase file");
-            env.env("RESTIC_PASSWORD".to_string(), passphrase);
+            env.env("RESTIC_PASSWORD".to_string(), passphrase.trim().to_string());
         } else {
             log::error!(
                 "Neither passphrase nor passphrase file provided for {}",
@@ -129,7 +129,7 @@ impl ResticTarget {
                 }
             };
             let ssh_cmd = format!(
-                "ssh -i {} {} -o StrictHostKeyChecking=no {user}@{host} -s sftp",
+                "ssh -i {} {} -o StrictHostKeyChecking=accept-new {user}@{host} -s sftp",
                 ssh.identity,
                 if let Some(p) = ssh.port {
                     format!("-p {p}")
