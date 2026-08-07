@@ -23,6 +23,21 @@
 
       lib = import ./nixos/lib.nix;
 
+      # Read by moira as `.#moiraFlake` — system-agnostic, so it belongs here
+      # rather than inside eachDefaultSystem. `.moira/container.yaml` declares
+      # `needs_flake: packages.containerImage`; declaring the spec is what turns
+      # that into an evaluated, scheduled derivation graph instead of an
+      # on-demand `nix build` inside the push step.
+      #
+      # `checks.bk` is the same derivation as `packages.default`, so including
+      # both costs nothing — a drv path is a content hash and the graph dedupes.
+      moiraFlake = {
+        include = [
+          "packages.*"
+          "checks.*"
+        ];
+      };
+
     }
     // flake-utils.lib.eachDefaultSystem (
       system:
